@@ -7,7 +7,6 @@
 
 #include <SimpleFIFO.h>
 #include <smartHouse.h>
-#include <mcp_can_dfs.h>
 #include <mcp_can.h>
 #include <SPI.h>
 
@@ -27,7 +26,9 @@ byte data[8] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 //	//ROUTABLE_MESSAGES routable;	//* urci, ci sprava bude moct byt presmerovana do inych segmentov siete
 //};
 
-CONF_MESSAGE gConfMessages[25] = { 0 };
+//CONF_MESSAGE gConfMessages[25] = { 0 };
+
+volatile SimpleFIFO<CONF_MESSAGE, 25> gFifoConfMessages;
 
 void setup() {
 	Serial.begin(115200);
@@ -54,30 +55,25 @@ void interruptFromCanBus() {
 	unsigned char rxBuf[8];
 	CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
 
-	//* 27 bit v odpovedi znamena odpoved na ziadost o konfiguraciu
-	if (bitRead(rxId, 27) == 1) {
+	if (CanExt::isConfMes(rxId)) {
 		//* prislo nastavenie pre konfiguraciu
-		INT32U id = rxId;
-		bitClear(id, 27);
-		bitClear(id, 28);
-		bitClear(id, 29);
-		bitClear(id, 30);
-		bitClear(id, 31);
-		INT32U macID = id;
+		INT32U macID = CanExt::getNormalizedID(rxId);
 		//Serial.print("Konfiguracia pre: ");
-		//Serial.println(macID);
+		Serial.println(macID);
+		CONF_MESSAGE msg(macID, len, rxBuf[0]);
+		gFifoConfMessages.enqueue(msg);
 
-		for (int i = 0; i < 25; i++) {
-			if (gConfMessages[i].macID == 0) {
-				gConfMessages[i].macID = macID;
-				for (int ii = 0; ii < len; ii++) {
-					gConfMessages[i].confData[ii] = rxBuf[ii];
-					//sprintf(msgString, "buf:%d", rxBuf[ii]);
-					//Serial.print(msgString);
-				}
-				break;
-			}
-		}
+		//for (int i = 0; i < 25; i++) {
+		//	if (gConfMessages[i].macID == 0) {
+		//		gConfMessages[i].macID = macID;
+		//		for (int ii = 0; ii < len; ii++) {
+		//			gConfMessages[i].confData[ii] = rxBuf[ii];
+		//			//sprintf(msgString, "buf:%d", rxBuf[ii]);
+		//			//Serial.print(msgString);
+		//		}
+		//		break;
+		//	}
+		//}
 	}
 }
 
@@ -102,14 +98,14 @@ void printStruct() {
 	Serial.println();
 	char msgString[128];
 	for (int i = 0; i < 25; i++) {
-		if (gConfMessages[i].macID != 0) {
-			sprintf(msgString, "MacID:%ld, deviceType:%d, pin:%d, canID:%d, routable:%d", gConfMessages[i].macID,
-				gConfMessages[i].confData[0],
-				gConfMessages[i].confData[1],
-				gConfMessages[i].confData[2],
-				gConfMessages[i].confData[3]);
-			Serial.println(msgString);
-		}
+		//if (gConfMessages[i].macID != 0) {
+		//	sprintf(msgString, "MacID:%ld, deviceType:%d, pin:%d, canID:%d, routable:%d", gConfMessages[i].macID,
+		//		gConfMessages[i].confData[0],
+		//		gConfMessages[i].confData[1],
+		//		gConfMessages[i].confData[2],
+		//		gConfMessages[i].confData[3]);
+		//	Serial.println(msgString);
+		//}
 	}
 }
 
