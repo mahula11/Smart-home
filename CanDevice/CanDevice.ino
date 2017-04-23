@@ -5,10 +5,24 @@
 */
 
 
+#include <EEPROMVar.h>
+#include <EEPROMex.h>
 #include <SimpleFIFO.h>
 #include <smartHouse.h>
 #include <mcp_can.h>
 #include <SPI.h>
+
+//#define WRITE_MAC_ADDRESS
+
+#ifdef WRITE_MAC_ADDRESS
+
+void setup() {
+	//* write unique MAC address to EEPROM
+	uint16_t address = 1;
+	EEPROM.writeInt(0, address);
+}
+
+#else
 
 #define CAN0_INT 2   // Set INT to pin 2
 MCP_CAN CAN0(10);     // Set CS to pin 10
@@ -30,8 +44,17 @@ byte data[8] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 
 volatile SimpleFIFO<CONF_MESSAGE, 25> gFifoConfMessages;
 
+
 void setup() {
 	Serial.begin(115200);
+
+	uint16_t address = EEPROM.readInt(0);
+	if (address == 0) {		
+		while (1) {
+			Serial.println("No MAC address given, please configure address!!!");
+			delay(1000);
+		}
+	}
 
 	// Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
 	if (CAN0.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK) 
@@ -44,7 +67,7 @@ void setup() {
 
 	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
 
-	sendRequestForConf();
+	sendRequestForConfiguration();
 }
 
 void interruptFromCanBus() {
@@ -55,31 +78,39 @@ void interruptFromCanBus() {
 	unsigned char rxBuf[8];
 	CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
 
-	if (CanExt::isConfMes(rxId)) {
+	if (CanExt::isMessageFromConfiguration(rxId)) {
 		//* prislo nastavenie pre konfiguraciu
 		INT32U macID = CanExt::getNormalizedID(rxId);
 		//Serial.print("Konfiguracia pre: ");
-		Serial.println(macID);
+		//Serial.println(macID);
 		CONF_MESSAGE msg(macID, len, rxBuf[0]);
 		gFifoConfMessages.enqueue(msg);
-
-		//for (int i = 0; i < 25; i++) {
-		//	if (gConfMessages[i].macID == 0) {
-		//		gConfMessages[i].macID = macID;
-		//		for (int ii = 0; ii < len; ii++) {
-		//			gConfMessages[i].confData[ii] = rxBuf[ii];
-		//			//sprintf(msgString, "buf:%d", rxBuf[ii]);
-		//			//Serial.print(msgString);
-		//		}
-		//		break;
-		//	}
-		//}
 	}
 }
 
-byte counter = 0;
+//byte counter = 0;
 
-void sendRequestForConf() {
+void loop() {
+	
+	if (Serial.available()) {
+		int incomingByte = Serial.read();
+		Serial.print(F("I received: "));
+		Serial.println(incomingByte, DEC);
+		if (incomingByte == 'r') {
+			sendRequestForConfiguration();
+		} else if(incomingByte == 'a') {
+			printStruct();
+		}
+	}
+	
+	if (gFifoConfMessages.count() > 0) {
+		//* zapis do eeprom
+	}
+
+	delay(10);   // send data per 100ms
+}
+
+void sendRequestForConfiguration() {
 	INT32U id;
 	id = 234;
 	bitSet(id, 31);				//* set extended message
@@ -109,75 +140,4 @@ void printStruct() {
 	}
 }
 
-bool printData = false;
-bool wasRead = false;
-
-void loop() {
-	//data[7] = counter;
-	// send data:  ID = 0x100, Standard CAN Frame, Data length = 8 bytes, 'data' = array of data bytes to send
-	//* byte sndStat = CAN0.sendMsgBuf(268435456, 1, 8, data);
-
-	if (Serial.available()) {
-		int incomingByte = Serial.read();
-		Serial.print(F("I received: "));
-		Serial.println(incomingByte, DEC);
-		if (incomingByte == 'r') {
-			sendRequestForConf();
-		} else if(incomingByte == 'a') {
-			printStruct();
-		}
-	}
-	
-	//if (!digitalRead(CAN0_INT)) {                         // If CAN0_INT pin is low, read receive buffer
-	//	wasRead = true;
-	//	INT32U rxId;
-	//	unsigned char len = 0;
-	//	unsigned char rxBuf[8];
-	//	CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
-	//	
-	//	char msgString[128] = { 0 };
-	//	//sprintf(msgString, "Extended ID: 0x%.9lX  DLC: %1d  Data:", (rxId & 0x1FFFFFFF), len);
-	//	//Serial.print(msgString);
-	//	//for (byte i = 0; i<len; i++) {
-	//	//	sprintf(msgString, " 0x%.2X", rxBuf[i]);
-	//	//	Serial.print(msgString);
-	//	//}
-	//	//Serial.println();
-
-	//	//Serial.println(rxId);
-
-	//	//* 27 bit v odpovedi znamena odpoved na ziadost o konfiguraciu
-	//	if (bitRead(rxId, 27) == 1) {
-	//		//* prislo nastavenie pre konfiguraciu
-	//		INT32U id = rxId;
-	//		bitClear(id, 27);
-	//		bitClear(id, 28);
-	//		bitClear(id, 29);
-	//		bitClear(id, 30);
-	//		bitClear(id, 31);
-	//		INT32U macID = id;
-	//		//Serial.print("Konfiguracia pre: ");
-	//		//Serial.println(macID);
-	//		
-	//		for (int i = 0; i < 25; i++) {
-	//			if (gConfMessages[i].macID == 0) {
-	//				gConfMessages[i].macID = macID;
-	//				for (int ii = 0; ii < len; ii++) {
-	//					gConfMessages[i].confData[ii] = rxBuf[ii];
-	//					//sprintf(msgString, "buf:%d", rxBuf[ii]);
-	//					//Serial.print(msgString);
-	//				}
-	//				printData = true;
-	//				break;
-	//			}
-	//		}
-	//	}	
-		//printStruct();
-	//}
-	//if (!wasRead && printData) {
-	//	printStruct();
-	//	printData = false;
-	//}
-	//wasRead = false;
-	delay(10);   // send data per 100ms
-}
+#endif
