@@ -5,13 +5,16 @@
 */
 
 
-#include <EEPROMVar.h>
+//#include <EEPROMVar.h>
+#include <QueueArray.h>
+#include <Streaming.h>
 #include <EEPROMex.h>
 #include <SimpleFIFO.h>
 #include <smartHouse.h>
 #include <mcp_can.h>
 #include <SPI.h>
 
+#include "arrivedConfiguration.h"
 //#define WRITE_MAC_ADDRESS
 
 #ifdef WRITE_MAC_ADDRESS
@@ -26,6 +29,7 @@ void setup() {
 
 #define CAN0_INT 2   // Set INT to pin 2
 MCP_CAN CAN0(10);     // Set CS to pin 10
+ArrivedConfiguration arrivedConf;
 
 byte data[8] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 
@@ -42,8 +46,12 @@ byte data[8] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 
 //CONF_MESSAGE gConfMessages[25] = { 0 };
 
-volatile SimpleFIFO<CONF_MESSAGE, 25> gFifoConfMessages;
+//volatile SimpleFIFO<CONF_MESSAGE, 25> gFifoConfMessages;
+//volatile QueueArray <CONF_MESSAGE> g_fifoConfMessages;
 
+void sendRequestForConfiguration();
+void interruptFromCanBus();
+void printStruct();
 
 void setup() {
 	Serial.begin(115200);
@@ -77,14 +85,35 @@ void interruptFromCanBus() {
 	unsigned char len = 0;
 	unsigned char rxBuf[8];
 	CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
+	
 
-	if (CanExt::isMessageFromConfiguration(rxId)) {
-		//* prislo nastavenie pre konfiguraciu
+	if (CanExt::isMessageFromCanConf(rxId)) {		
+		static bool firstConfMessage = true;
+		static uint8_t numberOfMessages = 0;
+		static uint8_t count = 0;
+		
+		//* v prvej konfiguracnej sprave pride pocet kofiguracnych sprav, ktore pridu
 		INT32U macID = CanExt::getNormalizedID(rxId);
+		//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
+		if (firstConfMessage && (len == 1)) {
+			firstConfMessage = false;
+			numberOfMessages = rxBuf[0];
+			arrivedConf.setCount(numberOfMessages);
+			//g_fifoConfMessages.resize(numberOfMessages);
+		}
+		
+		//* ked prijmeme vsetky spravy, tak resetneme premenne
+		if (numberOfMessages == count) {
+			firstConfMessage = true;
+			numberOfMessages = 0;
+			count = 0;
+		}
+		count++;
 		//Serial.print("Konfiguracia pre: ");
 		//Serial.println(macID);
 		CONF_MESSAGE msg(macID, len, rxBuf[0]);
-		gFifoConfMessages.enqueue(msg);
+		//g_fifoConfMessages.push(msg);
+		//gFifoConfMessages.enqueue(msg);
 	}
 }
 
@@ -103,9 +132,9 @@ void loop() {
 		}
 	}
 	
-	if (gFifoConfMessages.count() > 0) {
+	//if (gFifoConfMessages.count() > 0) {
 		//* zapis do eeprom
-	}
+	//}
 
 	delay(10);   // send data per 100ms
 }
