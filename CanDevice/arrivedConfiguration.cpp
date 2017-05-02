@@ -33,8 +33,8 @@ void ArrivedConfiguration::clean() {
 	_pConf = nullptr;
 }
 
-CONF_MESSAGE ArrivedConfiguration::getConf(uint8_t index) {
-	return _pConf[index];
+const CONF_MESSAGE * ArrivedConfiguration::getConf(uint8_t index) {
+	return _pConf + index;
 }
 
 void ArrivedConfiguration::addConf(const CONF_MESSAGE & msg) {

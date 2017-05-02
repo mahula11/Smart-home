@@ -34,9 +34,13 @@ void Device::init(EepromConf & eepromConf) {
 	sendRequestForConfiguration();
 }
 
-void Device::loop() {
+void Device::update() {
+	//* if arrived configuration is complet, then copy it to eeprom
 	if (s_arrivedConf.isComplet()) {
-
+		_eepromConf.setCountOfConf(s_arrivedConf.getCount());
+		for (uint8_t i = 0; i < s_arrivedConf.getCount(); i++) {
+			_eepromConf.writeConf(i, s_arrivedConf.getConf(i));
+		}
 	}
 }
 
@@ -58,7 +62,9 @@ void Device::interruptFromCanBus() {
 			//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
 			s_arrivedConf.setCount(rxBuf[0]);			
 		}
-	}
+	} //else if () {
+
+	//}
 }
 
 void Device::sendRequestForConfiguration() {

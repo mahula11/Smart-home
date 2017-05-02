@@ -17,7 +17,7 @@ public:
 	void setCount(uint8_t count);
 	uint8_t getCount();
 	void clean();
-	CONF_MESSAGE getConf(uint8_t index);
+	const CONF_MESSAGE * getConf(uint8_t index);
 	void addConf(const CONF_MESSAGE & msg);
 };
 

@@ -36,6 +36,6 @@ public:
 	~Device();
 
 	void init(EepromConf & eepromConf);
-	void loop();
+	void update();
 };
 

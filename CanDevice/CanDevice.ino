@@ -13,7 +13,7 @@
 void setup() {
 	//* write unique MAC address to EEPROM
 	uint16_t address = 1;
-	EEPROM.writeInt(0, address);
+	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, address);
 }
 
 #else
@@ -35,7 +35,7 @@ void setup() {
 }
 
 void loop() {
-	device.loop();
+	device.update();
 	
 	if (Serial.available()) {
 		int incomingByte = Serial.read();
