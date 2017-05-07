@@ -4,6 +4,7 @@
  Author:	Marek
 */
 
+#include <Streaming.h>
 #include "device.h"
 #include "eepromConf.h"
 
@@ -27,7 +28,7 @@ void setup() {
 	uint16_t address = eepromConf.getMacAddress();
 	if (address == 0) {		
 		while (1) {
-			Serial.println("No MAC address given, please configure address!!!");
+			Serial << F("No MAC address given, please configure address!!!") << endl;
 			delay(1000);
 		}
 	}

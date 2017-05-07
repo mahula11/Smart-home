@@ -9,23 +9,19 @@ ArrivedConfiguration::~ArrivedConfiguration() {
 }
 
 bool ArrivedConfiguration::isComplet() {
-	return (_numberOfAddedConf == _count);
+	return (_numberOfAddedConf == _pConf->count);
 }
 
 uint8_t ArrivedConfiguration::getCount() {
-	return _count;
+	return _pConf->count;
 }
 
 void ArrivedConfiguration::setCount(uint8_t count) {
-	_count = count;
-	if (_pConf) {
-		delete[] _pConf;
-	}
-	_pConf = new CONF_MESSAGE[count];
+	_pConf = SmartHouse::newConf(count);
 }
 
 void ArrivedConfiguration::clean() {
-	_count = 0;
+	//_count = 0;
 	_numberOfAddedConf = 0;
 	if (_pConf) {
 		delete[] _pConf;
@@ -33,10 +29,10 @@ void ArrivedConfiguration::clean() {
 	_pConf = nullptr;
 }
 
-const CONF_MESSAGE * ArrivedConfiguration::getConf(uint8_t index) {
-	return _pConf + index;
+const CONF * ArrivedConfiguration::getConf() {
+	return _pConf;
 }
 
 void ArrivedConfiguration::addConf(const CONF_MESSAGE & msg) {
-	_pConf[_numberOfAddedConf++] = msg;
+	_pConf->pMsgs[_numberOfAddedConf++] = msg;
 }

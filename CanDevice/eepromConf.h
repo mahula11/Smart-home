@@ -19,16 +19,15 @@
 
 class EepromConf {
 private:
-	CONF_MESSAGE _msg;
+	CONF * _pConf;
+	void setCountOfConf(uint8_t count);		
 public:
 	EepromConf();
 	~EepromConf();
 
 	uint16_t getMacAddress();
 	uint8_t getCountOfConf();
-	void setCountOfConf(uint8_t count);
-	void writeConf(uint8_t index, const CONF_MESSAGE * msg);
-	const CONF_MESSAGE * readConf(uint8_t index);
-	uint8_t getSizeOfMsg(const CONF_MESSAGE * msg);
+	void writeConf(const CONF * pConf);
+	const CONF * readConf();
 };
 
