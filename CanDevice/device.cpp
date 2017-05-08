@@ -30,7 +30,7 @@ void Device::init(EepromConf & eepromConf) {
 	if (s_can.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK) {
 		Serial << F("MCP2515 Initialized Successfully\n");
 	} else {
-		Serial << F("Error Initializing MCP2515\n");
+		Serial << F("MCP2515 Initializing Error\n");
 	}
 
 	s_can.setMode(MCP_NORMAL);   // Change to normal mode to allow messages to be transmitted
@@ -68,29 +68,37 @@ void Device::interruptFromCanBus() {
 	byte len = 0;
 	byte rxBuf[8];
 	s_can.readMsgBuf(&canId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
-	uint16_t macID = CanExt::getDeviceID(canId);
+	uint16_t receivedDeviceID = CanExt::getDeviceID(canId);
 
-	if (CanExt::isConfigurationMsgFlag(canId) && macID == s_conf.getMacAddress()) {
+	if (CanExt::isMsgFlagConfiguration(canId) && receivedDeviceID == s_conf.getMacAddress()) {
 		if (s_arrivedConf == nullptr) {
 			s_arrivedConf = new ArrivedConfiguration();
 		}
 		//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
+		//* getCount vrati nulu, pretoze este neviemme pocet sprav
 		if (s_arrivedConf->getCount()) {
-			CONF_MESSAGE msg(macID, len, rxBuf[0]);
+			CONF_MESSAGE msg(receivedDeviceID, len, rxBuf[0]);
 			s_arrivedConf->addConf(msg);
 		} else {
 			//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
 			s_arrivedConf->setCount(rxBuf[0]);
 		}
-	} //else if () {
-
-	//}
+	} else if (CanExt::isMsgFlagFromSwitch(canId)) { //* message from switch to lights
+		//* teraz skontrolovat ci ID vypinaca patri niektoremu vypinacu v konfiguracii (pre niektoru ziarovku)
+		for (byte i = 0; i < s_conf.getCount(); i++) {
+			//* vyhladavame len typ ziarovky a potom ich IDcka vypinacov
+			//* 0 - typ (ziarovka), 1 - gpio, 2 - id vypinaca
+			if (s_conf.getConf(i)->_confData[STRUCT_LIGHT__TYPE] == DEVICE_TYPE_LIGHT && s_conf.getConf(i)->_confData[STRUCT_LIGHT__SWITCH_CANID] == receivedDeviceID) {
+				aa;
+			}
+		}
+	}
 }
 
 void Device::sendRequestForConfiguration() {
 	uint32_t canID;
 	canID = s_conf.getMacAddress();
-	CanExt::setConfiguationMsgFlag(canID);
+	CanExt::setMsgFlagConfiguration(canID);
 	
 	byte sndStat = s_can.sendMsgBuf(canID, 0, _data);
 	if (sndStat != CAN_OK) {

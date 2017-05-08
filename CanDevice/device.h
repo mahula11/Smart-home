@@ -5,6 +5,7 @@
 #include <SPI.h>
 #include <mcp_can.h>
 #include <smartHouse.h>
+#include <Streaming.h>
 
 #include "configuration.h"
 #include "arrivedConfiguration.h"

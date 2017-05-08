@@ -23,9 +23,9 @@ void ArrivedConfiguration::setCount(uint8_t count) {
 void ArrivedConfiguration::clean() {
 	//_count = 0;
 	_numberOfAddedConf = 0;
-	if (_pConf) {
-		delete[] _pConf;
-	}
+	//if (_pConf) {
+	//	delete[] _pConf;
+	//}
 	_pConf = nullptr;
 }
 
