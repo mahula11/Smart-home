@@ -18,7 +18,7 @@ class Device {
 private:
 	static MCP_CAN s_can;     // Set CS to pin 10 in constructor
 	static ArrivedConfiguration * s_arrivedConf;
-	byte _data[8] = {0};
+	//byte _data[8] = {0};
 	//static uint16_t s_deviceAddress;
 	EepromConf & _eepromConf;
 	static Configuration s_conf;
@@ -40,5 +40,8 @@ public:
 
 	void init(EepromConf & eepromConf);
 	void update();
+	void setPinModes();
+	void checkModifiedData(byte * pData, byte index);
+	void checkValueOnPins(byte * pData, byte index);
 };
 
