@@ -48,3 +48,7 @@ Temporary Items
 */Debug/*
 */__vm/*
 CanConf/CanConf.vcxproj.filters
+CanConf/CanConf.sln
+CanConf/CanConf.v12.suo
+*.vcxp*
+CanDevice/*.suo
