@@ -41,7 +41,7 @@ public:
 	void init(EepromConf & eepromConf);
 	void update();
 	void setPinModes();
-	void checkModifiedData(byte * pData, byte index);
-	void checkValueOnPins(byte * pData, byte index);
+	void checkModifiedData(ConfData * pData, byte index);
+	void checkValueOnPins(ConfData * pData, byte index);
 };
 

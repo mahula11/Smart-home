@@ -18,6 +18,6 @@ public:
 	uint8_t getCount();
 	void clean();
 	const CONF * getConf();
-	void addConf(const CONF_MESSAGE & msg);
+	void addConf(const CONF_DATA & msg);
 };
 

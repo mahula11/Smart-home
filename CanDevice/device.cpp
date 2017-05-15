@@ -51,8 +51,8 @@ void Device::init(EepromConf & eepromConf) {
 
 void Device::setPinModes() {
 	for (int i = 0; i < s_conf.getCount(); i++) {
-		byte * pData = s_conf.getConf(i)->_confData;
-		switch (CanExt::getDeviceType(pData)) {
+		ConfData * pData = & s_conf.getConf(i)->_confData;
+		switch (CanExt::getDeviceTypeFromConf(pData)) {
 			case DEVICE_TYPE_LIGHT:
 			case DEVICE_TYPE_LIGHT_WITH_DIMMER:
 				pinMode(CanExt::getLightGPIO(pData), OUTPUT);
@@ -69,12 +69,12 @@ void Device::setPinModes() {
 	}
 }
 
-void Device::checkModifiedData(byte * pData, byte index) {
+void Device::checkModifiedData(ConfData * pData, byte index) {
 	//* tato modifikacia je nastavena vtedy, ked pridu nove data cez CanBus 
 	//* napr prepnutie vypinaca vysle spravu s novou hodnotou pre ziarovky, ktore pocuvaju pre dany vypinaca
 	if (s_conf.isModifiedValue()) {
 		if (s_conf.getConfValue(index)._modified) {
-			switch (CanExt::getDeviceType(pData)) {
+			switch (CanExt::getDeviceTypeFromConf(pData)) {
 				case DEVICE_TYPE_LIGHT:
 					digitalWrite(CanExt::getLightGPIO(pData), s_conf.getConfValue(index)._value);
 					break;
@@ -85,8 +85,8 @@ void Device::checkModifiedData(byte * pData, byte index) {
 	}
 }
 
-void Device::checkValueOnPins(byte * pData, byte index) {	
-	switch (CanExt::getDeviceType(pData)) {
+void Device::checkValueOnPins(ConfData * pData, byte index) {	
+	switch (CanExt::getDeviceTypeFromConf(pData)) {
 		case DEVICE_TYPE_SWITCH:
 		case DEVICE_TYPE_PUSH_BUTTON:
 		case DEVICE_TYPE_STAIR_CASE_SWITCH:
@@ -95,12 +95,12 @@ void Device::checkValueOnPins(byte * pData, byte index) {
 			//* if values are different, then send message to the lights
 			if (pinValue != s_conf.getConfValue(index)._value) {
 				//* send message
-				uint32_t canID = s_conf.getMacAddress();
+				CanID canID = s_conf.getMacAddress();
 				CanExt::setMsgFlagFromSwitch(canID);
-				byte data[2] = { 0 };
-				CanExt::setSwitchValue_toMsg(data, pinValue);
-				CanExt::setSwitchGPIO_toMsg(data, CanExt::getSwitchGPIO_fromConf(pData));
-				byte sndStat = s_can.sendMsgBuf(canID, 2, data);
+				MsgData data;
+				CanExt::setSwitchValue_toMsg(&data, pinValue);
+				CanExt::setSwitchGPIO_toMsg(&data, CanExt::getSwitchGPIO_fromConf(pData));
+				byte sndStat = s_can.sendMsgBuf(canID, 2, data[0]);
 				if (sndStat != CAN_OK) {
 					Serial << F("Error Sending Message\n");
 				} else {
@@ -130,7 +130,7 @@ void Device::update() {
 	}
 
 	for (int index = 0; index < s_conf.getCount(); index++) {
-		byte * pData = s_conf.getConf(index)->_confData;
+		ConfData * pData = & s_conf.getConf(index)->_confData;
 		
 		//* pozrieme, ci neprisli nove data
 		checkModifiedData(pData, index);
@@ -142,11 +142,11 @@ void Device::update() {
 
 void Device::interruptFromCanBus() {
 	//Device * instance = getInstance();
-	uint32_t canId;
+	CanID canId;
 	byte len = 0;
-	byte rxBuf[8];
+	MsgData rxBuf;
 	s_can.readMsgBuf(&canId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
-	uint16_t receivedDeviceID = CanExt::getDeviceID(canId);
+	MacID receivedDeviceID = CanExt::getDeviceID(canId);
 
 	if (CanExt::isMsgFlagConfiguration(canId) && receivedDeviceID == s_conf.getMacAddress()) {
 		if (s_arrivedConf == nullptr) {
@@ -155,7 +155,7 @@ void Device::interruptFromCanBus() {
 		//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
 		//* getCount vrati nulu, pretoze este neviemme pocet sprav
 		if (s_arrivedConf->getCount()) {
-			CONF_MESSAGE msg(receivedDeviceID, len, rxBuf[0]);
+			CONF_DATA msg(len, rxBuf[0]);
 			s_arrivedConf->addConf(msg);
 		} else {
 			//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
@@ -164,12 +164,13 @@ void Device::interruptFromCanBus() {
 	} else if (CanExt::isMsgFlagFromSwitch(canId)) { //* message from switch to lights
 		//* teraz skontrolovat ci ID vypinaca patri niektoremu vypinacu v nasej konfiguracii (pre niektoru ziarovku)
 		byte receivedSwitchGPIO, receivedSwitchStatus;
-		receivedSwitchGPIO = CanExt::getSwitchGPIO_fromMsg(rxBuf);
-		receivedSwitchStatus = CanExt::getSwitchValue_fromMsg(rxBuf);
+		receivedSwitchGPIO = CanExt::getSwitchGPIO_fromMsg(&rxBuf);
+		receivedSwitchStatus = CanExt::getSwitchValue_fromMsg(&rxBuf);
 		for (byte i = 0; i < s_conf.getCount(); i++) {			
 			//* vyhladavame len typ "ziarovky" a potom ich IDcka vypinacov
 			//* 0 - typ (ziarovka), 1 - gpio, 2 - id vypinaca
-			if (s_conf.isDeviceLight(i) && s_conf.getLightsSwitchCanID(i) == receivedDeviceID && s_conf.getLightsSwitchGPIO(i) == receivedSwitchGPIO) {
+			ConfData * pData = s_conf.getConf(i)->_confData[0];
+			if (CanExt::isDeviceLight(pData) && CanExt::getLightsSwitchCanID(pData) == receivedDeviceID && CanExt::getLightsSwitchGPIO(pData) == receivedSwitchGPIO) {
 				s_conf.setConfValue(i, receivedSwitchStatus, true);
 			}
 		}
@@ -177,7 +178,7 @@ void Device::interruptFromCanBus() {
 }
 
 void Device::sendRequestForConfiguration() {
-	uint32_t canID = s_conf.getMacAddress();
+	CanID canID = s_conf.getMacAddress();
 	CanExt::setMsgFlagConfiguration(canID);
 	byte data;
 	byte sndStat = s_can.sendMsgBuf(canID, 0, &data);

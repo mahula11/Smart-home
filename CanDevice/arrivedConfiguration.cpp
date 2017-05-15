@@ -33,6 +33,6 @@ const CONF * ArrivedConfiguration::getConf() {
 	return _pConf;
 }
 
-void ArrivedConfiguration::addConf(const CONF_MESSAGE & msg) {
+void ArrivedConfiguration::addConf(const CONF_DATA & msg) {
 	_pConf->pMsgs[_numberOfAddedConf++] = msg;
 }
