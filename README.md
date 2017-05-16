@@ -1,6 +1,6 @@
 # SmartHouse
 
-Project is in development.
+Project in development.
 
 Smart House based on Can Bus.
 System is decentralised, devices doesn't need superior elements, communication is realized directly between devices. 
