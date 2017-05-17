@@ -4,9 +4,7 @@
  Author:	Marek
 */
 
-#include <Streaming.h>
 #include "device.h"
-#include "eepromConf.h"
 
 //#define WRITE_MAC_ADDRESS
 #ifdef WRITE_MAC_ADDRESS

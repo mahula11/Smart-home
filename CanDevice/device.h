@@ -11,8 +11,10 @@
 #include "arrivedConfiguration.h"
 #include "eepromConf.h"
 
-#define CAN0_INT 2   // Set INT to pin 2
+#define LOG_DEBUG(str) \
+		Serial << str;
 
+#define CAN0_INT 2   // Set INT to pin 2
 
 class Device {
 private:

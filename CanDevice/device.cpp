@@ -1,6 +1,5 @@
 
 #include <Arduino.h>
-#include <Streaming.h>
 
 #include "device.h"
 
@@ -148,7 +147,7 @@ void Device::interruptFromCanBus() {
 	s_can.readMsgBuf(&canId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
 	MacID receivedDeviceID = CanExt::getDeviceID(canId);
 
-	if (CanExt::isMsgFlagConfiguration(canId) && receivedDeviceID == s_conf.getMacAddress()) {
+	if (CanExt::isMsgFlagFromConfiguration(canId) && receivedDeviceID == s_conf.getMacAddress()) {
 		if (s_arrivedConf == nullptr) {
 			s_arrivedConf = new ArrivedConfiguration();
 		}
@@ -179,7 +178,7 @@ void Device::interruptFromCanBus() {
 
 void Device::sendRequestForConfiguration() {
 	CanID canID = s_conf.getMacAddress();
-	CanExt::setMsgFlagConfiguration(canID);
+	CanExt::setMsgFlagForConfiguration(canID);
 	byte data;
 	byte sndStat = s_can.sendMsgBuf(canID, 0, &data);
 	if (sndStat != CAN_OK) {

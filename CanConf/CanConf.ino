@@ -54,10 +54,14 @@ void setup() {
 		Serial.println("Error Initializing MCP2515...");
 
 	CAN0.setMode(MCP_NORMAL);                     // Set operation mode to normal so the MCP2515 sends acks to received data.
-
 	pinMode(CAN0_INT, INPUT);                            // Configuring pin for /INT input
 
+	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
+
 	Serial.println("MCP2515 Library Receive Example...");
+}
+
+void interruptFromCanBus() {
 }
 
 INT32U resetBit(INT32U value, byte bit) {
