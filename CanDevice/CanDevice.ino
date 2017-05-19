@@ -15,6 +15,11 @@ void setup() {
 	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, address);
 }
 
+void loop() {
+	Serial << F("Defined WRITE_MAC_ADDRESS, it's just for inserting unique MAC address, then please remove definition WRITE_MAC_ADDRESS" << endl);
+	delay(1000);
+}
+
 #else
 
 EepromConf eepromConf;
@@ -26,7 +31,8 @@ void setup() {
 	uint16_t address = eepromConf.getMacAddress();
 	if (address == 0) {		
 		while (1) {
-			Serial << F("No MAC address given, please configure address!!!") << endl;
+			Serial << F("No MAC address given, please configure address!!!") << endl
+					<< F("Need to define WRITE_MAC_ADDRESS and put properly unique address.") << endl;
 			delay(1000);
 		}
 	}
@@ -49,20 +55,5 @@ void loop() {
 	
 	delay(10);   // send data per 100ms
 }
-
-//void printStruct() {
-//	Serial.println();
-//	char msgString[128];
-//	for (int i = 0; i < 25; i++) {
-//		//if (gConfMessages[i].macID != 0) {
-//		//	sprintf(msgString, "MacID:%ld, deviceType:%d, pin:%d, canID:%d, routable:%d", gConfMessages[i].macID,
-//		//		gConfMessages[i].confData[0],
-//		//		gConfMessages[i].confData[1],
-//		//		gConfMessages[i].confData[2],
-//		//		gConfMessages[i].confData[3]);
-//		//	Serial.println(msgString);
-//		//}
-//	}
-//}
 
 #endif
