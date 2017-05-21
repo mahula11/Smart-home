@@ -52,6 +52,8 @@ MSG_DATA gMsgData[] = {
 	MSG_DATA(-1, nullptr)
 };
 
+volatile bool gNewRequestForConfiguration = false;
+
 const byte NUM_MACIDS = 40;
 volatile MacID gMacIDs[NUM_MACIDS] = { 0 };
 
@@ -82,6 +84,7 @@ void interruptFromCanBus() {
 	MacID receivedDeviceID = CanExt::getDeviceID(canId);
 
 	if (CanExt::isMsgFlagForConfiguration(canId)) {
+		gNewRequestForConfiguration = true;
 		for (int i = 0; i < NUM_MACIDS; i++) {
 			if (gMacIDs[i] == 0) {
 				gMacIDs[i] = receivedDeviceID;
@@ -92,26 +95,51 @@ void interruptFromCanBus() {
 }
 
 void loop() {
-	CanID canID = 0;
-	MacID macID = 0;
-	CanExt::setMsgFlagFromConfiguration(canID);
+	if (gNewRequestForConfiguration) {
+		gNewRequestForConfiguration = false;
 
-	for (int i = 0; i < NUM_MACIDS; i++) {
-		if (gMacIDs[i] != 0) {
-			//* get MacID
-			macID = gMacIDs[i];
-			//* release place for new MacID adddresses
-			gMacIDs[i] = 0;
-			//* insert Mac address to CanBus ID
-			CanExt::setMacIdToCanID(canID, macID);
-			//* get number of macIDs in DB
-			//for () {
+		CanID canID = 0;
+		MacID macID = 0;
+		CanExt::setMsgFlagFromConfiguration(canID);
 
-			//}
-			//* send it
-			//* get particular configuration
-			//* send it
-			delay(50);
+		for (byte i = 0; i < NUM_MACIDS; i++) {
+			if (gMacIDs[i] != 0) {
+				//* get MacID
+				macID = gMacIDs[i];
+				//* release place for new MacID adddresses
+				gMacIDs[i] = 0;
+				//* insert Mac address to CanBus ID
+				CanExt::setMacIdToCanID(canID, macID);
+				//* get number of macIDs in DB
+				byte cont = 1;
+				byte countOfConf = 0;
+				byte ii = 0;
+				MSG_DATA * pData = &gMsgData[ii];
+				while (pData->_macID != -1) {					
+					if (pData->_macID == macID) {
+						countOfConf++;
+					}
+					pData = &gMsgData[++ii];
+				}
+				//* send it
+				byte sndStat = CAN0.sendMsgBuf(canID, 1, 1, &countOfConf);
+				if (sndStat != CAN_OK) {
+					Serial.println("Error Sending Configuration!");
+				} else {
+					Serial.println("Configuration Sent Successfully!");
+				}
+				//* get particular configuration
+				ii = 0;
+				pData = &gMsgData[ii];
+				while (pData->_macID != -1) {
+					if (pData->_macID == macID) {
+						CAN0.sendMsgBuf(canID, 1, pData->_pData->_length, pData->_pData->getBuf());
+					}
+					pData = &gMsgData[++ii];
+				}
+				//* send it
+				delay(50);
+			}
 		}
 	}
 	delay(100);
