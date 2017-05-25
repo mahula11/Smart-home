@@ -22,7 +22,7 @@ private:
 	static ArrivedConfiguration * s_arrivedConf;
 	//byte _data[8] = {0};
 	//static uint16_t s_deviceAddress;
-	EepromConf & _eepromConf;
+	//EepromConf & _eepromConf;
 	static Configuration s_conf;
 
 	//static bool s_firstConfMessage;
@@ -40,10 +40,11 @@ public:
 	Device();
 	~Device();
 
-	void init(EepromConf & eepromConf);
+	void init();
 	void update();
 	void setPinModes();
 	void checkModifiedData(ConfData * pData, byte index);
 	void checkValueOnPins(ConfData * pData, byte index);
 };
 
+extern EepromConf eepromConf;

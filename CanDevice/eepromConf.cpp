@@ -41,6 +41,6 @@ const CONF * EepromConf::readConf() {
 	uint8_t count = getCountOfConf();
 	//_pConf = new CONF_MESSAGE[count];
 	_pConf = SmartHouse::newConf(count, getMacAddress());
-	EEPROM.readBlock(EEPROM_ADDRESS__CONFS, _pConf->pMsgs, count);
+	EEPROM.readBlock(EEPROM_ADDRESS__CONFS, *_pConf->ppConfData, count);
 	return _pConf;
 }

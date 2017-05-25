@@ -21,8 +21,8 @@ Device::Device() {
 Device::~Device() {
 }
 
-void Device::init(EepromConf & eepromConf) {
-	_eepromConf = eepromConf;
+void Device::init() {
+	//_eepromConf = eepromConf;
 	s_arrivedConf = nullptr;
 	//s_deviceAddress = _eepromConf.getMacAddress();
 	// Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
@@ -38,9 +38,9 @@ void Device::init(EepromConf & eepromConf) {
 	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
 
 	//* skontroluje, ci mame konfiguracne spravy. pokial nie, tak treba poziadat o konfiguraciu
-	if (_eepromConf.getCountOfConf()) {
+	if (eepromConf.getCountOfConf()) {
 		//* nacitaj conf
-		s_conf.setConfiguration(_eepromConf.readConf());
+		s_conf.setConfiguration(eepromConf.readConf());
 		setPinModes();
 	} else {
 		//* pocet je 0, takze ziadnu konfiguraciu v eeprom nemame, treba poziadat o novu.
@@ -148,14 +148,25 @@ void Device::interruptFromCanBus() {
 	MacID receivedDeviceID = CanExt::getDeviceID(canId);
 
 	if (CanExt::isMsgFlagFromConfiguration(canId) && receivedDeviceID == s_conf.getMacAddress()) {
+		//* messages from configuration server
 		if (s_arrivedConf == nullptr) {
 			s_arrivedConf = new ArrivedConfiguration();
 		}
 		//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
 		//* getCount vrati nulu, pretoze este neviemme pocet sprav
 		if (s_arrivedConf->getCount()) {
-			CONF_DATA msg(len, rxBuf[0]);
-			s_arrivedConf->addConf(msg);
+			//CONF_DATA msg(len, rxBuf[0]);
+			CONF_DATA_BASE * pConfDataBase;
+			switch (CONF_DATA_BASE::getType(rxBuf)) {
+				case DEVICE_TYPE_SWITCH:
+					pConfDataBase = new CONF_DATA_SWITCH;					
+					break;
+				case DEVICE_TYPE_LIGHT:
+					pConfDataBase = new CONF_DATA_LIGHT;
+					break;
+			}
+			pConfDataBase->deserialize(rxBuf);
+			s_arrivedConf->addConf(pConfDataBase);
 		} else {
 			//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
 			s_arrivedConf->setCount(rxBuf[0]);

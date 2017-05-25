@@ -4,6 +4,7 @@
  Author:	Marek
 */
 
+#include <Streaming.h>
 #include <smartHouse.h>
 #include <mcp_can.h>
 #include <SPI.h>
@@ -47,8 +48,8 @@
 //};
 
 MSG_DATA gMsgData[] = {
-	MSG_DATA(1, new DATA_SWITCH(PD7)),
-	MSG_DATA(1, new DATA_LIGHT(PB0, 1, PD7)),
+	MSG_DATA(1, new CONF_DATA_SWITCH(PD7)),
+	MSG_DATA(1, new CONF_DATA_LIGHT(PB0, 1, PD7)),
 	MSG_DATA(-1, nullptr)
 };
 
@@ -123,6 +124,7 @@ void loop() {
 				}
 				//* send it
 				byte sndStat = CAN0.sendMsgBuf(canID, 1, 1, &countOfConf);
+				DEBUG(F("First message, number of configuration: ") << countOfConf);
 				if (sndStat != CAN_OK) {
 					Serial.println("Error Sending Configuration!");
 				} else {
@@ -133,7 +135,10 @@ void loop() {
 				pData = &gMsgData[ii];
 				while (pData->_macID != -1) {
 					if (pData->_macID == macID) {
-						CAN0.sendMsgBuf(canID, 1, pData->_pData->_length, pData->_pData->getBuf());
+						byte data[10];
+						pData->_pData->serialize(data);
+						CAN0.sendMsgBuf(canID, 1, pData->_pData->getSize(), data);
+						DEBUG(F("Send conf: ") << *data);
 					}
 					pData = &gMsgData[++ii];
 				}

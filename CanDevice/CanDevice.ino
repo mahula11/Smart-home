@@ -36,7 +36,7 @@ void setup() {
 			delay(1000);
 		}
 	}
-	device.init(eepromConf);
+	device.init();
 }
 
 void loop() {
