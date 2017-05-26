@@ -30,17 +30,57 @@ uint8_t EepromConf::getCountOfConf() {
 //	return 2 + 1 + msg->_length;
 //}
 
-//* zapise vsetky spravy do eeprom
+//* write whole configuration to eeprom
 void EepromConf::writeConf(const CONF * pConf) {
+	//* write number of confs
 	setCountOfConf(pConf->count);
-	EEPROM.writeBlock(EEPROM_ADDRESS__CONFS, pConf->pMsgs, pConf->count);
+	//* eeprom writing start at EEPROM_ADDRESS__CONFS
+	short address = EEPROM_ADDRESS__CONFS;
+	byte data[10];
+	byte size;
+	//* write particular confs
+	for (byte i = 0; i < pConf->count; i++) {
+		//* serialize selected device
+		pConf->ppConfData[i]->serialize(data);
+		size = pConf->ppConfData[i]->getSize();
+		//* write to eeprom
+		eeprom_write_block(&data, (void*)address, size);
+		//* increase address
+		address += size;
+	}
 }
 
-//* vrati novu strukturu s konfiguraciou
+//* read whole configuration from eeprom
 const CONF * EepromConf::readConf() {
+	//* from eeprom read number of confs
 	uint8_t count = getCountOfConf();
-	//_pConf = new CONF_MESSAGE[count];
+	//* make new configuration
 	_pConf = SmartHouse::newConf(count, getMacAddress());
-	EEPROM.readBlock(EEPROM_ADDRESS__CONFS, *_pConf->ppConfData, count);
+	//* eeprom reading starting on address EEPROM_ADDRESS__CONFS
+	short address = EEPROM_ADDRESS__CONFS;
+	DATA_BASE * pConfData;
+	byte size;
+	byte data[10];
+	//* read particular conf
+	for (byte i = 0; i < count; i++) {
+		//* get type of device
+		byte deviceType = EEPROM.readByte(address);
+		switch (DATA_BASE::getType(&deviceType)) {
+			case DEVICE_TYPE_LIGHT:
+				pConfData = new CONF_DATA_LIGHT;
+				break;
+			case DEVICE_TYPE_SWITCH:
+				pConfData = new CONF_DATA_SWITCH;				
+				break;
+		}
+		size = pConfData->getSize();		
+		//* read from eeprom
+		eeprom_read_block(&data, (const void*)address, size);
+		pConfData->deserialize(data);
+		//* increase address to next conf
+		address += size;
+		//* insert to global structure
+		_pConf->ppConfData[i] = pConfData;
+	}
 	return _pConf;
 }

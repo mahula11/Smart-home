@@ -33,6 +33,6 @@ const CONF * ArrivedConfiguration::getConf() {
 	return _pConf;
 }
 
-void ArrivedConfiguration::addConf(CONF_DATA_BASE * pConfDataBase) {
+void ArrivedConfiguration::addConf(DATA_BASE * pConfDataBase) {
 	_pConf->ppConfData[_numberOfAddedConf++] = pConfDataBase;
 }

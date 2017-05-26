@@ -43,8 +43,8 @@ public:
 	void init();
 	void update();
 	void setPinModes();
-	void checkModifiedData(ConfData * pData, byte index);
-	void checkValueOnPins(ConfData * pData, byte index);
+	void checkModifiedData(DATA_BASE * pConfData, byte index);
+	void checkValueOnPins(DATA_BASE * pConfData, byte index);
 };
 
 extern EepromConf eepromConf;

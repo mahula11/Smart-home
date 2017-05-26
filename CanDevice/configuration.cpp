@@ -18,9 +18,9 @@ void Configuration::setConfiguration(CONF * pConf) {
 	_pValues = new VALUE[pConf->count];
 }
 
-CONF_DATA * Configuration::getConf(byte index) {
-	if (_pConf->count != 0) {
-		return (_pConf->pMsgs + index);
+DATA_BASE * Configuration::getConf(byte index) {
+	if (_pConf->count != 0 && index < _pConf->count) {
+		return (_pConf->ppConfData[index]);
 	} else {
 		Serial << F("Configuration is empty");
 	}
