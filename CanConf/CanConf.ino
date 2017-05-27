@@ -47,9 +47,24 @@
 //	MSG_DATA(1, 5, (MsgData*)(DEVICE_TYPE_LIGHT, PB0, (MacID)1, PD7))
 //};
 
+struct MSG_DATA {
+	MacID _macID;	//* Identifikator z CanBus zariadenia (z EEPROM)
+	CDataBase * _pData;
+
+	MSG_DATA(MacID macID, CDataBase * pData) {
+		_macID = macID;
+		_pData = pData;
+	}
+
+	MSG_DATA() {
+		_macID = 0;
+		_pData = nullptr;
+	};
+};
+
 MSG_DATA gMsgData[] = {
-	MSG_DATA(1, new CONF_DATA_SWITCH(PD7)),
-	MSG_DATA(1, new CONF_DATA_LIGHT(PB0, 1, PD7)),
+	MSG_DATA(1, new CConfDataSwitch(PD7)),
+	MSG_DATA(1, new CConfDataLight(PB0, 1, PD7)),
 	MSG_DATA(-1, nullptr)
 };
 
@@ -66,10 +81,11 @@ void setup() {
 	Serial.begin(115200);
 
 	// Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
-	if (CAN0.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-		Serial.println(F("MCP2515 Initialized Successfully!"));
-	else
-		Serial.println(F("Error Initializing MCP2515..."));
+	if (CAN0.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK) {
+		DEBUG(F("MCP2515 Initialized Successfully!"));
+	} else {
+		DEBUG(F("Error Initializing MCP2515..."));
+	}
 
 	CAN0.setMode(MCP_NORMAL);                     // Set operation mode to normal so the MCP2515 sends acks to received data.
 	pinMode(CAN0_INT, INPUT);                            // Configuring pin for /INT input
@@ -78,17 +94,18 @@ void setup() {
 }
 
 void interruptFromCanBus() {
-	CanID canId;
+	CCanID canId;
 	byte len = 0;
 	MsgData rxBuf;
-	CAN0.readMsgBuf(&canId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
-	MacID receivedDeviceID = CanExt::getDeviceID(canId);
+	CAN0.readMsgBuf(&canId._canID, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
+	DEBUG(F("Receive msg:") << canId._canID << endl);
 
-	if (CanExt::isMsgFlagForConfiguration(canId)) {
+	if (canId.hasFlag_forConfiguration()) {
 		gNewRequestForConfiguration = true;
+		DEBUG(F("Configuration msg") << canId.getMacID() << endl);
 		for (int i = 0; i < NUM_MACIDS; i++) {
 			if (gMacIDs[i] == 0) {
-				gMacIDs[i] = receivedDeviceID;
+				gMacIDs[i] = canId.getMacID();
 				break;
 			}
 		}
@@ -99,9 +116,10 @@ void loop() {
 	if (gNewRequestForConfiguration) {
 		gNewRequestForConfiguration = false;
 
-		CanID canID = 0;
+		CCanID canID;;
 		MacID macID = 0;
-		CanExt::setMsgFlagFromConfiguration(canID);
+		canID.setFlag_fromConfiguration();
+		DEBUG(F("Sending conf to:") << canID.getMacID() << endl);
 
 		for (byte i = 0; i < NUM_MACIDS; i++) {
 			if (gMacIDs[i] != 0) {
@@ -110,7 +128,7 @@ void loop() {
 				//* release place for new MacID adddresses
 				gMacIDs[i] = 0;
 				//* insert Mac address to CanBus ID
-				CanExt::setMacIdToCanID(canID, macID);
+				canID.setMacID(macID);
 				//* get number of macIDs in DB
 				byte cont = 1;
 				byte countOfConf = 0;
@@ -123,12 +141,12 @@ void loop() {
 					pData = &gMsgData[++ii];
 				}
 				//* send it
-				byte sndStat = CAN0.sendMsgBuf(canID, 1, 1, &countOfConf);
-				DEBUG(F("First message, number of configuration: ") << countOfConf);
+				byte sndStat = CAN0.sendMsgBuf(canID._canID, 1, 1, &countOfConf);
+				DEBUG(F("Number of configuration: ") << countOfConf << endl);
 				if (sndStat != CAN_OK) {
-					Serial.println("Error Sending Configuration!");
+					DEBUG(F("Error Sending Configuration!/n"));
 				} else {
-					Serial.println("Configuration Sent Successfully!");
+					DEBUG(F("Configuration Sent Successfully!/n"));
 				}
 				//* get particular configuration
 				ii = 0;
@@ -137,8 +155,8 @@ void loop() {
 					if (pData->_macID == macID) {
 						byte data[10];
 						pData->_pData->serialize(data);
-						CAN0.sendMsgBuf(canID, 1, pData->_pData->getSize(), data);
-						DEBUG(F("Send conf: ") << *data);
+						CAN0.sendMsgBuf(canID._canID, 1, pData->_pData->getSize(), data);
+						DEBUG(F("Send conf: ") << *data << endl);
 					}
 					pData = &gMsgData[++ii];
 				}

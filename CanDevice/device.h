@@ -5,6 +5,7 @@
 #include <SPI.h>
 #include <mcp_can.h>
 #include <smartHouse.h>
+//#include <data.h>
 #include <Streaming.h>
 
 #include "configuration.h"
@@ -43,8 +44,8 @@ public:
 	void init();
 	void update();
 	void setPinModes();
-	void checkModifiedData(DATA_BASE * pConfData, byte index);
-	void checkValueOnPins(DATA_BASE * pConfData, byte index);
+	void checkModifiedData(CDataBase * pConfData, byte index);
+	void checkValueOnPins(CDataBase * pConfData, byte index);
 };
 
 extern EepromConf eepromConf;

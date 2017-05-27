@@ -28,11 +28,11 @@ Device device;
 void setup() {
 	Serial.begin(115200);
 
-	uint16_t address = eepromConf.getMacAddress();
+	MacID address = eepromConf.getMacAddress();
 	if (address == 0) {		
 		while (1) {
-			Serial << F("No MAC address given, please configure address!!!") << endl
-					<< F("Need to define WRITE_MAC_ADDRESS and put properly unique address.") << endl;
+			DEBUG(F("No MAC address given, please configure address!!!") << endl
+					<< F("Need to define WRITE_MAC_ADDRESS and put properly unique address.") << endl);
 			delay(1000);
 		}
 	}

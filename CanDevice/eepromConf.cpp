@@ -58,19 +58,19 @@ const CONF * EepromConf::readConf() {
 	_pConf = SmartHouse::newConf(count, getMacAddress());
 	//* eeprom reading starting on address EEPROM_ADDRESS__CONFS
 	short address = EEPROM_ADDRESS__CONFS;
-	DATA_BASE * pConfData;
+	CDataBase * pConfData;
 	byte size;
 	byte data[10];
 	//* read particular conf
 	for (byte i = 0; i < count; i++) {
 		//* get type of device
 		byte deviceType = EEPROM.readByte(address);
-		switch (DATA_BASE::getType(&deviceType)) {
+		switch (CDataBase::getType(&deviceType)) {
 			case DEVICE_TYPE_LIGHT:
-				pConfData = new CONF_DATA_LIGHT;
+				pConfData = new CConfDataLight;
 				break;
 			case DEVICE_TYPE_SWITCH:
-				pConfData = new CONF_DATA_SWITCH;				
+				pConfData = new CConfDataSwitch;				
 				break;
 		}
 		size = pConfData->getSize();		

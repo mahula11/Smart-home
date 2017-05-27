@@ -22,7 +22,7 @@ public:
 	byte getCount();
 	uint16_t getMacAddress();
 	void setConfiguration(CONF * pConf);
-	DATA_BASE * getConf(byte index);
+	CDataBase * getConf(byte index);
 	void setConfValue(byte index, byte value, bool modifyFlag);
 	VALUE getConfValue(byte index);
 	bool isModifiedValue();

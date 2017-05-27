@@ -18,7 +18,7 @@ void Configuration::setConfiguration(CONF * pConf) {
 	_pValues = new VALUE[pConf->count];
 }
 
-DATA_BASE * Configuration::getConf(byte index) {
+CDataBase * Configuration::getConf(byte index) {
 	if (_pConf->count != 0 && index < _pConf->count) {
 		return (_pConf->ppConfData[index]);
 	} else {
@@ -28,7 +28,7 @@ DATA_BASE * Configuration::getConf(byte index) {
 
 //* 0 + 2 bytes
 //* vrati adresu zariadenia
-uint16_t Configuration::getMacAddress() {
+MacID Configuration::getMacAddress() {
 	return _pConf->macAddress;
 }
 
