@@ -83,6 +83,7 @@ void Device::checkModifiedData(CDataBase * pConfData, byte index) {
 		if (s_conf.getConfValue(index)._modified) {
 			switch (pConfData->getType()) {
 				case DEVICE_TYPE_LIGHT:
+					DEBUG("Set light on PIN:" << ((CConfDataLight*)pConfData)->_gpio << " value:" << s_conf.getConfValue(index)._value << endl);
 					digitalWrite(((CConfDataLight*)pConfData)->_gpio, s_conf.getConfValue(index)._value);
 					break;
 				case DEVICE_TYPE_LIGHT_WITH_DIMMER:

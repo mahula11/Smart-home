@@ -12,14 +12,14 @@
 void setup() {
 	Serial.begin(115200);
 	//* write unique MAC address to EEPROM
-	uint16_t address = 1;
+	uint16_t address = 2;
 	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, address);
 	EEPROM.writeInt(EEPROM_ADDRESS__COUNT, 0);
 }
 
 void loop() {
 	Serial << F("Defined WRITE_MAC_ADDRESS, it's just for inserting unique MAC address, then please remove definition WRITE_MAC_ADDRESS") << endl;
-	delay(1000);
+	delay(15000);
 }
 
 #else
@@ -31,11 +31,11 @@ void setup() {
 	Serial.begin(115200);
 
 	MacID address = eepromConf.getMacAddress();
-	if (address == 0) {		
+	if (address == 65535) {		
 		while (1) {
 			DEBUG(F("No MAC address given, please configure address!!!") << endl
 					<< F("Need to define WRITE_MAC_ADDRESS and put properly unique address.") << endl);
-			delay(1000);
+			delay(15000);
 		}
 	}
 	DEBUG("address = " << address << endl);

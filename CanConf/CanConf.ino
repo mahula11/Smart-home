@@ -64,7 +64,7 @@ struct MSG_DATA {
 
 MSG_DATA gListOfConfs[] = {
 	MSG_DATA(1, new CConfDataSwitch(A4)),
-	MSG_DATA(1, new CConfDataLight(A2, 2, A4)),
+	MSG_DATA(1, new CConfDataLight(A2, 2, 5)),
 	MSG_DATA(2, new CConfDataSwitch(5)),
 	MSG_DATA(2, new CConfDataLight(7, 1, A4)),
 	MSG_DATA(-1, nullptr)
@@ -100,7 +100,7 @@ void interruptFromCanBus() {
 	byte len = 0;
 	MsgData rxBuf;
 	CAN0.readMsgBuf(&canId._canID, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
-	DEBUG(F("-----------------") << endl << F("Receive msg:") << canId._canID << endl);
+	DEBUG(F("-----------------") << endl << F("Receive msg:") << canId._canID << ",MacID:" << canId.getMacID() << endl);
 
 	if (canId.hasFlag_forConfiguration()) {
 		gNewRequestForConfiguration = true;
