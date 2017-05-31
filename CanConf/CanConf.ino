@@ -42,7 +42,7 @@
 //								{ -1, { -1 } } }; //* posledny zaznam, len ukoncene pole
 
 
-//MSG_DATA gMsgData[] = {
+//MSG_DATA gListOfConfs[] = {
 //	MSG_DATA(1, 2, (MsgData*)(DEVICE_TYPE_SWITCH, PD7)),
 //	MSG_DATA(1, 5, (MsgData*)(DEVICE_TYPE_LIGHT, PB0, (MacID)1, PD7))
 //};
@@ -62,9 +62,11 @@ struct MSG_DATA {
 	};
 };
 
-MSG_DATA gMsgData[] = {
-	MSG_DATA(1, new CConfDataSwitch(PD7)),
-	MSG_DATA(1, new CConfDataLight(PB0, 1, PD7)),
+MSG_DATA gListOfConfs[] = {
+	MSG_DATA(1, new CConfDataSwitch(A4)),
+	MSG_DATA(1, new CConfDataLight(A2, 2, A4)),
+	MSG_DATA(2, new CConfDataSwitch(5)),
+	MSG_DATA(2, new CConfDataLight(7, 1, A4)),
 	MSG_DATA(-1, nullptr)
 };
 
@@ -98,11 +100,11 @@ void interruptFromCanBus() {
 	byte len = 0;
 	MsgData rxBuf;
 	CAN0.readMsgBuf(&canId._canID, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
-	DEBUG(F("Receive msg:") << canId._canID << endl);
+	DEBUG(F("-----------------") << endl << F("Receive msg:") << canId._canID << endl);
 
 	if (canId.hasFlag_forConfiguration()) {
 		gNewRequestForConfiguration = true;
-		DEBUG(F("Configuration msg") << canId.getMacID() << endl);
+		DEBUG(F("Configuration msg from (MacID): ") << canId.getMacID() << endl);
 		for (int i = 0; i < NUM_MACIDS; i++) {
 			if (gMacIDs[i] == 0) {
 				gMacIDs[i] = canId.getMacID();
@@ -116,10 +118,10 @@ void loop() {
 	if (gNewRequestForConfiguration) {
 		gNewRequestForConfiguration = false;
 
-		CCanID canID;;
+		CCanID canID;
 		MacID macID = 0;
 		canID.setFlag_fromConfiguration();
-		DEBUG(F("Sending conf to:") << canID.getMacID() << endl);
+		DEBUG(F("Conf going to send ..") << endl);
 
 		for (byte i = 0; i < NUM_MACIDS; i++) {
 			if (gMacIDs[i] != 0) {
@@ -129,36 +131,38 @@ void loop() {
 				gMacIDs[i] = 0;
 				//* insert Mac address to CanBus ID
 				canID.setMacID(macID);
+				DEBUG("canid:" << canID._canID << ", macid:" << macID << endl);
 				//* get number of macIDs in DB
 				byte cont = 1;
 				byte countOfConf = 0;
 				byte ii = 0;
-				MSG_DATA * pData = &gMsgData[ii];
+				MSG_DATA * pData = &gListOfConfs[ii];
+				//* get number of configurations for macID
 				while (pData->_macID != -1) {					
 					if (pData->_macID == macID) {
 						countOfConf++;
 					}
-					pData = &gMsgData[++ii];
+					pData = &gListOfConfs[++ii];
 				}
-				//* send it
+				//* send number of configuration
 				byte sndStat = CAN0.sendMsgBuf(canID._canID, 1, 1, &countOfConf);
 				DEBUG(F("Number of configuration: ") << countOfConf << endl);
 				if (sndStat != CAN_OK) {
-					DEBUG(F("Error Sending Configuration!/n"));
+					DEBUG(F("Error Sending Configuration!\n"));
 				} else {
-					DEBUG(F("Configuration Sent Successfully!/n"));
+					DEBUG(F("Configuration Sent Successfully!\n"));
 				}
 				//* get particular configuration
 				ii = 0;
-				pData = &gMsgData[ii];
+				pData = &gListOfConfs[ii];
 				while (pData->_macID != -1) {
 					if (pData->_macID == macID) {
 						byte data[10];
 						pData->_pData->serialize(data);
 						CAN0.sendMsgBuf(canID._canID, 1, pData->_pData->getSize(), data);
-						DEBUG(F("Send conf: ") << *data << endl);
+						DEBUG(F("Send conf CanID:") << canID._canID << ",deviceType:" << *data << endl);
 					}
-					pData = &gMsgData[++ii];
+					pData = &gListOfConfs[++ii];
 				}
 				//* send it
 				delay(50);

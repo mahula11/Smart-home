@@ -27,9 +27,9 @@ void Device::init() {
 	//s_deviceAddress = _eepromConf.getMacAddress();
 	// Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
 	if (s_can.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK) {
-		DEBUG(F("MCP2515 Initialized Successfully\n"));
+		DEBUG(F("MCP2515 Initialized Successfully\n") << endl);
 	} else {
-		DEBUG(F("MCP2515 Initializing Error\n"));
+		DEBUG(F("MCP2515 Initializing Error\n") << endl);
 	}
 
 	s_can.setMode(MCP_NORMAL);   // Change to normal mode to allow messages to be transmitted
@@ -37,12 +37,19 @@ void Device::init() {
 
 	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
 
+	DEBUG("1------------: " << eepromConf.getCountOfConf() << endl);
+
 	//* skontroluje, ci mame konfiguracne spravy. pokial nie, tak treba poziadat o konfiguraciu
 	if (eepromConf.getCountOfConf()) {
 		//* nacitaj conf
+		DEBUG("2------------: " << eepromConf.getCountOfConf() << endl);
 		s_conf.setConfiguration(eepromConf.readConf());
+		DEBUG("21------------" << endl);
 		setPinModes();
+		DEBUG("22------------" << endl);
 	} else {
+		DEBUG("3------------" << endl);
+		//DEBUG(F("Send request for configuration") << endl);
 		//* pocet je 0, takze ziadnu konfiguraciu v eeprom nemame, treba poziadat o novu.
 		sendRequestForConfiguration();
 	}
@@ -121,6 +128,7 @@ void Device::update() {
 	//* s_arrivedConf is read in interruptFromCanBus
 	//* if arrived configuration is complet, then copy it to eeprom
 	if (s_arrivedConf && s_arrivedConf->isComplet()) {		
+		DEBUG("Ne conf will be procesed" << endl);
 		//* zapiseme do eeprom
 		eepromConf.writeConf(s_arrivedConf->getConf());
 		//* zapiseme do Configuration
@@ -150,7 +158,12 @@ void Device::interruptFromCanBus() {
 	MsgData rxBuf;
 	s_can.readMsgBuf(&canId._canID, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
 
-	if (canId.hasFlag_fromConfiguration() && canId.getMacID() == s_conf.getMacAddress()) {
+	DEBUG("Received CanID:" << canId._canID << ",MacID:" << canId.getMacID()
+		<< ",hasFlag_fromConfiguration:" << canId.hasFlag_fromConfiguration()
+		<< ",hasFlag_fromSwitch:" << canId.hasFlag_fromSwitch()
+		<< endl);
+
+	if (canId.hasFlag_fromConfiguration() && canId.getMacID() == eepromConf.getMacAddress()) {
 		//* messages from configuration server
 		if (s_arrivedConf == nullptr) {
 			s_arrivedConf = new ArrivedConfiguration();
@@ -158,7 +171,7 @@ void Device::interruptFromCanBus() {
 		//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
 		//* getCount vrati nulu, pretoze este neviemme pocet sprav
 		if (s_arrivedConf->getCount()) {
-			//CONF_DATA msg(len, rxBuf[0]);
+			DEBUG("Conf arrived for:" << CDataBase::getType(rxBuf) << endl);
 			CDataBase * pConfData;
 			switch (CDataBase::getType(rxBuf)) {
 				case DEVICE_TYPE_SWITCH:
@@ -171,9 +184,11 @@ void Device::interruptFromCanBus() {
 			s_arrivedConf->addConf(pConfData);
 		} else {
 			//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
+			DEBUG("Number of confs arrived:" << rxBuf[0] << endl);
 			s_arrivedConf->setCount(rxBuf[0]);
 		}
 	} else if (canId.hasFlag_fromSwitch()) { //* message from switch to lights
+		DEBUG("Messsage from switch arrived" << endl);
 		//* teraz skontrolovat ci ID vypinaca patri niektoremu vypinacu v nasej konfiguracii (pre niektoru ziarovku)
 		CTrafficDataSwitch switchData(rxBuf);		
 		for (byte i = 0; i < s_conf.getCount(); i++) {			
@@ -189,15 +204,18 @@ void Device::interruptFromCanBus() {
 
 void Device::sendRequestForConfiguration() {
 	CCanID canID;
-	canID.setMacID(s_conf.getMacAddress());
+	canID.setMacID(eepromConf.getMacAddress());
 	canID.setFlag_forConfiguration();
+
+	uint16_t mac = canID._canID & 65535;
+
 	byte data;
-	DEBUG(F("Send request for configuration"));
+	DEBUG(F("Send request for configuration, canID:") << mac << endl);
 	byte sndStat = s_can.sendMsgBuf(canID._canID, 0, &data);
 	if (sndStat != CAN_OK) {
-		Serial << F("Error Sending Configuration\n");
+		DEBUG(F("Error Sending Configuration\n"));
 	} else {
-		Serial << F("Configuration Sent Successfully\n");
+		DEBUG(F("Configuration Sent Successfully\n"));
 		//Serial.println(id);
 	}
 }

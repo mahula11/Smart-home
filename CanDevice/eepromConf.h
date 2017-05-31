@@ -5,6 +5,7 @@
 #include <Arduino.h>
 
 #include <smartHouse.h>
+#include <Streaming.h>
 
 //* eeprom map
 //*  address  |     lenght      | description

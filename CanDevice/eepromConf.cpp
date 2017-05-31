@@ -53,7 +53,9 @@ void EepromConf::writeConf(const CONF * pConf) {
 //* read whole configuration from eeprom
 const CONF * EepromConf::readConf() {
 	//* from eeprom read number of confs
+	DEBUG("readConf 1" << endl);
 	uint8_t count = getCountOfConf();
+	DEBUG("readConf 2" << endl);
 	//* make new configuration
 	_pConf = SmartHouse::newConf(count, getMacAddress());
 	//* eeprom reading starting on address EEPROM_ADDRESS__CONFS
@@ -61,10 +63,12 @@ const CONF * EepromConf::readConf() {
 	CDataBase * pConfData;
 	byte size;
 	byte data[10];
+	DEBUG(F("Number of configurations in EEPROM = ") << count << endl);
 	//* read particular conf
 	for (byte i = 0; i < count; i++) {
 		//* get type of device
 		byte deviceType = EEPROM.readByte(address);
+		DEBUG(F("deviceType = ") << deviceType << endl);
 		switch (CDataBase::getType(&deviceType)) {
 			case DEVICE_TYPE_LIGHT:
 				pConfData = new CConfDataLight;

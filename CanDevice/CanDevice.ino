@@ -10,13 +10,15 @@
 #ifdef WRITE_MAC_ADDRESS
 
 void setup() {
+	Serial.begin(115200);
 	//* write unique MAC address to EEPROM
 	uint16_t address = 1;
 	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, address);
+	EEPROM.writeInt(EEPROM_ADDRESS__COUNT, 0);
 }
 
 void loop() {
-	Serial << F("Defined WRITE_MAC_ADDRESS, it's just for inserting unique MAC address, then please remove definition WRITE_MAC_ADDRESS" << endl);
+	Serial << F("Defined WRITE_MAC_ADDRESS, it's just for inserting unique MAC address, then please remove definition WRITE_MAC_ADDRESS") << endl;
 	delay(1000);
 }
 
@@ -36,22 +38,26 @@ void setup() {
 			delay(1000);
 		}
 	}
+	DEBUG("address = " << address << endl);
+	//Serial.print("eepromConf: ");
+	//Serial.println((INT32U)&eepromConf, HEX);
+	//DEBUG("eepromConf: " << &eepromConf << endl);
 	device.init();
 }
 
 void loop() {
 	device.update();
 	
-	if (Serial.available()) {
-		int incomingByte = Serial.read();
-		Serial.print(F("I received: "));
-		Serial.println(incomingByte, DEC);
-		if (incomingByte == 'r') {
-			//sendRequestForConfiguration();
-		} else if(incomingByte == 'a') {
-			//printStruct();
-		}
-	}
+	//if (Serial.available()) {
+	//	int incomingByte = Serial.read();
+	//	Serial.print(F("I received: "));
+	//	Serial.println(incomingByte, DEC);
+	//	if (incomingByte == 'r') {
+	//		//sendRequestForConfiguration();
+	//	} else if(incomingByte == 'a') {
+	//		//printStruct();
+	//	}
+	//}
 	
 	delay(10);   // send data per 100ms
 }
