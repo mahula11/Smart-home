@@ -26,5 +26,6 @@ public:
 	void setConfValue(byte index, byte value, bool modifyFlag);
 	VALUE getConfValue(byte index);
 	bool isModifiedValue();
+	void resetModifiedValue();
 };
 

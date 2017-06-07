@@ -53,3 +53,5 @@ CanConf/CanConf.v12.suo
 *.vcxp*
 CanDevice/*.suo
 CanDevice/CanDevice.sln
+CanDevice/doxygen*
+CanDevice/ClassDiagram.cd

@@ -46,3 +46,7 @@ VALUE Configuration::getConfValue(byte index) {
 bool Configuration::isModifiedValue() {
 	return _modified;
 }
+
+void Configuration::resetModifiedValue() {
+	_modified = false;
+}

@@ -38,7 +38,7 @@ void setup() {
 			delay(15000);
 		}
 	}
-	DEBUG("address = " << address << endl);
+	DEBUG(VAR(address));
 	//Serial.print("eepromConf: ");
 	//Serial.println((INT32U)&eepromConf, HEX);
 	//DEBUG("eepromConf: " << &eepromConf << endl);
