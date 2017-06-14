@@ -176,9 +176,10 @@ void Device::interruptFromCanBus() {
 		//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
 		//* getCount vrati nulu, pretoze este neviemme pocet sprav
 		if (s_arrivedConf->getCount()) {
-			DEBUG("Conf arrived for:" << CDataBase::getType(rxBuf));
+			byte type = rxBuf[0];
+			DEBUG("Conf arrived for:" << type);
 			CDataBase * pConfData;
-			switch (CDataBase::getType(rxBuf)) {
+			switch (type) {
 				case DEVICE_TYPE_SWITCH:
 					pConfData = new CConfDataSwitch(rxBuf);					
 					break;

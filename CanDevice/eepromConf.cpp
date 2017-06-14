@@ -69,7 +69,7 @@ const CONF * EepromConf::readConf() {
 		//* get type of device
 		byte deviceType = EEPROM.readByte(address);
 		DEBUG(F("deviceType = ") << deviceType);
-		switch (CDataBase::getType(&deviceType)) {
+		switch (deviceType) {
 			case DEVICE_TYPE_LIGHT:
 				pConfData = new CConfDataLight;
 				break;

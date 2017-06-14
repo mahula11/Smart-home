@@ -139,19 +139,21 @@ void loop() {
 				MSG_DATA * pData = &gListOfConfs[ii];
 				//* get number of configurations for macID
 				while (pData->_macID != -1) {					
-					if (pData->_macID == macID) {
+					if (macID == pData->_macID) {
 						countOfConf++;
 					}
 					pData = &gListOfConfs[++ii];
 				}
 				//* send number of configuration
 				byte sndStat = CAN0.sendMsgBuf(canID._canID, 1, 1, &countOfConf);
+#ifdef DEBUG_BUILD
 				DEBUG(F("Number of configuration: ") << countOfConf << endl);
 				if (sndStat != CAN_OK) {
 					DEBUG(F("Error Sending Configuration!\n"));
 				} else {
 					DEBUG(F("Configuration Sent Successfully!\n"));
 				}
+#endif
 				//* get particular configuration
 				ii = 0;
 				pData = &gListOfConfs[ii];
