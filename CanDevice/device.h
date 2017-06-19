@@ -31,7 +31,9 @@ private:
 	//static byte s_numberOfArrivedMsg;
 
 	static void interruptFromCanBus();
-	void sendRequestForConfiguration();
+	void sendRequest_forConfiguration();
+	void sendRequest_askSwitchForValue(MacID macId, uint8_t pin);
+	void sendRequest_fromSwitch(byte gpio, byte pinValue);
 	
 	static Device * s_instance;
 	static Device * getInstance() {
@@ -43,7 +45,7 @@ public:
 
 	void init();
 	void update();
-	void setPinModes();
+	void setPins();
 	void checkModifiedData(CDataBase * pConfData, byte index);
 	void checkValueOnPins(CDataBase * pConfData, byte index);
 };
