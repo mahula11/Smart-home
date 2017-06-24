@@ -14,6 +14,7 @@ private:
 	CONF * _pConf;
 	VALUE * _pValues;
 	bool _modified;
+	//getForcedResetTime
 
 public:
 	Configuration();

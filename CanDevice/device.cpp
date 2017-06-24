@@ -112,6 +112,14 @@ void Device::checkValueOnPins(CDataBase * pConfData, byte index) {
 }
 
 void Device::update() {
+	//* vynuteny restart
+	//* pokial je millis() mensi ako nastaveny cas (4 hodiny), dovtedy sa watchdog bude resetovat. 
+	//* pokial tento cas presiahne, tak nedovolime reset watchdogu a tym bude vynuteny reset procesoru
+//	if (millis() < s_conf.getForcedResetTime()) {
+		//* resetuje watchdog, zabrani restartu
+		wdt_reset();
+//	}
+
 	//* s_arrivedConf is read in interruptFromCanBus
 	//* if arrived configuration is complet, then copy it to eeprom
 	if (s_arrivedConf && s_arrivedConf->isComplet()) {		
@@ -144,56 +152,64 @@ void Device::interruptFromCanBus() {
 	CCanID canId;
 	byte len = 0;
 	MsgData rxBuf;
-	s_can.readMsgBuf(&canId._canID, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
+	while (s_can.readMsgBuf(&canId._canID, &len, rxBuf) == CAN_OK) {
+		DEBUG(F("Received CanID:") << canId._canID << F(",MacID:") << canId.getMacID()
+			<< F(",fromConf:") << canId.hasFlag_fromConfiguration()
+			<< F(",fromSwitch:") << canId.hasFlag_fromSwitch()
+			<< F(",askSwitchForVal") << canId.hasFlag_askSwitchForValue());
 
-	DEBUG(F("Received CanID:") << canId._canID << F(",MacID:") << canId.getMacID()
-		<< F(",fromConf:") << canId.hasFlag_fromConfiguration()
-		<< F(",fromSwitch:") << canId.hasFlag_fromSwitch()
-		<< F(",askSwitchForVal") << canId.hasFlag_askSwitchForValue());
-
-	if (canId.hasFlag_fromConfiguration() && canId.getMacID() == eepromConf.getMacAddress()) {
-		//* messages from configuration server
-		if (s_arrivedConf == nullptr) {
-			s_arrivedConf = new ArrivedConfiguration();
-		}
-		//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
-		//* getCount vrati nulu, pretoze este neviemme pocet sprav
-		if (s_arrivedConf->getCount()) {
-			byte type = rxBuf[0];
-			DEBUG(F("Conf arrived for:") << type);
-			CDataBase * pConfData;
-			switch (type) {
-				case DEVICE_TYPE_SWITCH:
-					pConfData = new CConfDataSwitch(rxBuf);					
-					break;
-				case DEVICE_TYPE_LIGHT:
-					pConfData = new CConfDataLight(rxBuf);
-					break;
+		if (canId.hasFlag_fromConfiguration() && canId.getMacID() == eepromConf.getMacAddress()) {
+			//* messages from configuration server
+			if (s_arrivedConf == nullptr) {
+				s_arrivedConf = new ArrivedConfiguration();
 			}
-			s_arrivedConf->addConf(pConfData);
-		} else {
-			//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
-			DEBUG(F("Number of confs arrived:") << rxBuf[0]);
-			s_arrivedConf->setCount(rxBuf[0]);
-		}
-	} else if (canId.hasFlag_fromSwitch()) { //* message from switch to lights
-		DEBUG(F("Messsage from switch arrived"));
-		//* teraz skontrolovat ci ID vypinaca patri niektoremu vypinacu v nasej konfiguracii (pre niektoru ziarovku)
-		CTrafficDataSwitch switchData(rxBuf);		
-		for (byte i = 0; i < s_conf.getCount(); i++) {			
-			//* vyhladavame len typ "ziarovky" a potom ich IDcka vypinacov
-			//* 0 - typ (ziarovka), 1 - gpio, 2 - id vypinaca
-			CDataBase * pData = s_conf.getConf(i);
-			if (pData->getType() == DEVICE_TYPE_LIGHT && ((CConfDataLight*)pData)->_switchMacID == canId.getMacID() && ((CConfDataLight*)pData)->_switchGPIO == switchData._gpio) {
-				s_conf.setConfValue(i, switchData._value, true);
-			}
-		}
-	} else if (canId.hasFlag_askSwitchForValue() && canId.getMacID() == eepromConf.getMacAddress()) {
-		DEBUG(F("Message from light, asking switch for value"));
 
-		byte gpio = rxBuf[0];
-		byte pinValue = digitalRead(gpio);
-		sendRequest_fromSwitch(gpio, pinValue);
+			//* sprava moze prist z FE, bez vyziadania
+			//* nastavime timeout pre watchdog
+			if (rxBuf[0] == DEVICE_TYPE_WATCHDOG_TIMEOUT) {
+				eepromConf.setWatchdogTimeout((WATCHDOG_TIMEOUT)rxBuf[1]);
+				continue;
+			}
+
+			//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
+			//* getCount vrati nulu, pretoze este neviemme pocet sprav
+			if (s_arrivedConf->getCount()) {
+				byte type = rxBuf[0];
+				DEBUG(F("Conf arrived for:") << type);
+				CDataBase * pConfData;
+				switch (type) {
+					case DEVICE_TYPE_SWITCH:
+						pConfData = new CConfDataSwitch(rxBuf);
+						break;
+					case DEVICE_TYPE_LIGHT:
+						pConfData = new CConfDataLight(rxBuf);
+						break;
+				}
+				s_arrivedConf->addConf(pConfData);
+			} else {
+				//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
+				DEBUG(F("Number of confs arrived:") << rxBuf[0]);
+				s_arrivedConf->setCount(rxBuf[0]);
+			}
+		} else if (canId.hasFlag_fromSwitch()) { //* message from switch to lights
+			DEBUG(F("Messsage from switch arrived"));
+			//* teraz skontrolovat ci ID vypinaca patri niektoremu vypinacu v nasej konfiguracii (pre niektoru ziarovku)
+			CTrafficDataSwitch switchData(rxBuf);
+			for (byte i = 0; i < s_conf.getCount(); i++) {
+				//* vyhladavame len typ "ziarovky" a potom ich IDcka vypinacov
+				//* 0 - typ (ziarovka), 1 - gpio, 2 - id vypinaca
+				CDataBase * pData = s_conf.getConf(i);
+				if (pData->getType() == DEVICE_TYPE_LIGHT && ((CConfDataLight*)pData)->_switchMacID == canId.getMacID() && ((CConfDataLight*)pData)->_switchGPIO == switchData._gpio) {
+					s_conf.setConfValue(i, switchData._value, true);
+				}
+			}
+		} else if (canId.hasFlag_askSwitchForValue() && canId.getMacID() == eepromConf.getMacAddress()) {
+			DEBUG(F("Message from light, asking switch for value"));
+
+			byte gpio = rxBuf[0];
+			byte pinValue = digitalRead(gpio);
+			sendRequest_fromSwitch(gpio, pinValue);
+		}
 	}
 }
 
@@ -232,7 +248,7 @@ void Device::sendRequest_fromSwitch(uint8_t gpio, byte pinValue) {
 	canID.setMacID(s_conf.getMacAddress());
 	canID.setFlag_fromSwitch();
 	CTrafficDataSwitch dataSwitch(gpio, pinValue);
-	MsgData data;
+	MsgData data = {0};
 	dataSwitch.serialize(data);
 	DEBUG("data:" << PRINT_DATA(data));
 	byte sndStat = s_can.sendMsgBuf(canID._canID, dataSwitch.getSize(), data);

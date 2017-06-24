@@ -1,5 +1,6 @@
 #pragma once
 
+#include <avr/wdt.h>
 #include <Arduino.h>
 
 #include <SPI.h>
@@ -33,7 +34,7 @@ private:
 	static void interruptFromCanBus();
 	void sendRequest_forConfiguration();
 	void sendRequest_askSwitchForValue(MacID macId, uint8_t pin);
-	void sendRequest_fromSwitch(byte gpio, byte pinValue);
+	void static sendRequest_fromSwitch(byte gpio, byte pinValue);
 	
 	static Device * s_instance;
 	static Device * getInstance() {

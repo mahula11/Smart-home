@@ -14,14 +14,22 @@ uint16_t EepromConf::getMacAddress() {
 	return EEPROM.readInt(EEPROM_ADDRESS__MAC_ADDRESS);
 }
 
+uint8_t EepromConf::getWatchdogTimeout() {
+	return EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT);
+}
+
+void EepromConf::setWatchdogTimeout(uint8_t to) {
+	EEPROM.writeByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT, to);
+}
+
 //* nastavi pocet sprav, ktore sa idu zapisat do eeprom
 void EepromConf::setCountOfConf(uint8_t count) {
-	EEPROM.writeByte(EEPROM_ADDRESS__COUNT, count);
+	EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, count);
 }
 
 //* vrati pocet sprav v eeprom
 uint8_t EepromConf::getCountOfConf() {
-	return EEPROM.readByte(EEPROM_ADDRESS__COUNT);
+	return EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT);
 }
 
 //* 
@@ -53,9 +61,7 @@ void EepromConf::writeConf(const CONF * pConf) {
 //* read whole configuration from eeprom
 const CONF * EepromConf::readConf() {
 	//* from eeprom read number of confs
-	DEBUG("readConf 1");
 	uint8_t count = getCountOfConf();
-	DEBUG("readConf 2");
 	//* make new configuration
 	_pConf = SmartHouse::newConf(count, getMacAddress());
 	//* eeprom reading starting on address EEPROM_ADDRESS__CONFS

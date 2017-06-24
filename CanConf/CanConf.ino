@@ -65,6 +65,7 @@ struct MSG_DATA {
 MSG_DATA gListOfConfs[] = {
 	MSG_DATA(1, new CConfDataSwitch(A4)),
 	MSG_DATA(1, new CConfDataLight(A2, 2, 5)),
+	MSG_DATA(1, new CConfDataWatchdog(to8000ms)),  //*tato sprava sa z konfiguracie posielat nebude (tu je to len na test), bude sa posielat z FE
 	MSG_DATA(2, new CConfDataSwitch(5)),
 	MSG_DATA(2, new CConfDataLight(7, 1, A4)),
 	MSG_DATA(-1, nullptr)
@@ -171,6 +172,20 @@ void loop() {
 			}
 		}
 	}
+
+	if (Serial.available()) {
+		int incomingByte = Serial.read();
+		Serial.print(F("I received: "));
+		Serial.println(incomingByte, DEC);
+		if (incomingByte == 'r') {
+			//*posle reset
+		} else if (incomingByte == 't') {
+			//* posle reset s adresou
+		} else if (incomingByte == 'q') {
+			//* posle zmenu watchdogu
+		}
+	}
+
 	delay(100);
 }
 
