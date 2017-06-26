@@ -112,17 +112,17 @@ void watchdogSetup(void) {
 	uint8_t a= eepromConf.getWatchdogTimeout();
 	WATCHDOG_TIMEOUT to = (WATCHDOG_TIMEOUT) eepromConf.getWatchdogTimeout();
 	switch (to) {
-		case to16ms:
-			break;
-		case to32ms:
-			wdp0 = 1;
-			break;
-		case to64ms:
-			wdp1 = 1;
-			break;
-		case to125ms:
-			wdp0 = wdp1 =  1;
-			break;
+		//case to16ms:
+		//	break;
+		//case to32ms:
+		//	wdp0 = 1;
+		//	break;
+		//case to64ms:
+		//	wdp1 = 1;
+		//	break;
+		//case to125ms:
+		//	wdp0 = wdp1 =  1;
+		//	break;
 		case to250ms:
 			wdp2 = 1;
 			break;

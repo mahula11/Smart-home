@@ -65,7 +65,6 @@ struct MSG_DATA {
 MSG_DATA gListOfConfs[] = {
 	MSG_DATA(1, new CConfDataSwitch(A4)),
 	MSG_DATA(1, new CConfDataLight(A2, 2, 5)),
-	MSG_DATA(1, new CConfDataWatchdog(to8000ms)),  //*tato sprava sa z konfiguracie posielat nebude (tu je to len na test), bude sa posielat z FE
 	MSG_DATA(2, new CConfDataSwitch(5)),
 	MSG_DATA(2, new CConfDataLight(7, 1, A4)),
 	MSG_DATA(-1, nullptr)
@@ -115,6 +114,19 @@ void interruptFromCanBus() {
 	}
 }
 
+void sendMsg(uint32_t canId, CDataBase * cdb) {
+	byte data[8];
+	cdb->serialize(data);
+	INT8U ret = CAN0.sendMsgBuf(canId, 1, cdb->getSize(), data);
+#ifdef DEBUG_BUILD
+	if (ret == CAN_OK) {
+		DEBUG(F("Send msg CanID:") << canId << ",deviceType:" << *data << endl);
+	} else {
+		DEBUG(F("Failure when send CanID:") << canId << F(",error:") << ret);
+	}
+#endif
+}
+
 void loop() {
 	if (gNewRequestForConfiguration) {
 		gNewRequestForConfiguration = false;
@@ -160,10 +172,7 @@ void loop() {
 				pData = &gListOfConfs[ii];
 				while (pData->_macID != -1) {
 					if (pData->_macID == macID) {
-						byte data[10];
-						pData->_pData->serialize(data);
-						CAN0.sendMsgBuf(canID._canID, 1, pData->_pData->getSize(), data);
-						DEBUG(F("Send conf CanID:") << canID._canID << ",deviceType:" << *data << endl);
+						sendMsg(canID._canID, pData->_pData);
 					}
 					pData = &gListOfConfs[++ii];
 				}
@@ -179,10 +188,25 @@ void loop() {
 		Serial.println(incomingByte, DEC);
 		if (incomingByte == 'r') {
 			//*posle reset
+			CCanID canID;
+			canID.setMacID(0);
+			canID.setFlag_fromConfiguration();
 		} else if (incomingByte == 't') {
 			//* posle reset s adresou
-		} else if (incomingByte == 'q') {
+		} else if (incomingByte == 'a') {
 			//* posle zmenu watchdogu
+			CConfDataWatchdog wd(to8000ms);
+			CCanID canId;
+			canId.setMacID(1);
+			canId.setFlag_fromConfiguration();
+			sendMsg(canId._canID, &wd);
+		} else if (incomingByte == 's') {
+			//* posle zmenu watchdogu
+			CConfDataWatchdog wd(to2000ms);
+			CCanID canId;
+			canId.setMacID(1);
+			canId.setFlag_fromConfiguration();
+			sendMsg(canId._canID, &wd);
 		}
 	}
 
