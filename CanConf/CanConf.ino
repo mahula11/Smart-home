@@ -96,7 +96,7 @@ void setup() {
 }
 
 void interruptFromCanBus() {
-	CCanID canId;
+	CanID canId;
 	byte len = 0;
 	MsgData rxBuf;
 	CAN0.readMsgBuf(&canId._canID, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
@@ -131,9 +131,9 @@ void loop() {
 	if (gNewRequestForConfiguration) {
 		gNewRequestForConfiguration = false;
 
-		CCanID canID;
+		CanID canID;
 		MacID macID = 0;
-		canID.setFlag_fromConfiguration();
+		//canID.setFlag_fromConfiguration();
 		DEBUG(F("Conf going to send ..") << endl);
 
 		for (byte i = 0; i < NUM_MACIDS; i++) {
@@ -158,6 +158,7 @@ void loop() {
 					pData = &gListOfConfs[++ii];
 				}
 				//* send number of configuration
+				canID.setFlag_fromConfNumber();
 				byte sndStat = CAN0.sendMsgBuf(canID._canID, 1, 1, &countOfConf);
 #ifdef DEBUG_BUILD
 				DEBUG(F("Number of configuration: ") << countOfConf << endl);
@@ -172,6 +173,8 @@ void loop() {
 				pData = &gListOfConfs[ii];
 				while (pData->_macID != -1) {
 					if (pData->_macID == macID) {
+						canID.clearConfigPart();
+						canID.setConfigPart(pData->_pData->getType());
 						sendMsg(canID._canID, pData->_pData);
 					}
 					pData = &gListOfConfs[++ii];
@@ -188,24 +191,24 @@ void loop() {
 		Serial.println(incomingByte, DEC);
 		if (incomingByte == 'r') {
 			//*posle reset
-			CCanID canID;
+			CanID canID;
 			canID.setMacID(0);
-			canID.setFlag_fromConfiguration();
+			//canID.setFlag_fromCo();
 		} else if (incomingByte == 't') {
 			//* posle reset s adresou
 		} else if (incomingByte == 'a') {
 			//* posle zmenu watchdogu
 			CConfDataWatchdog wd(to8000ms);
-			CCanID canId;
+			CanID canId;
 			canId.setMacID(1);
-			canId.setFlag_fromConfiguration();
+			canId.setFlag_fromConfSetWatchdog();
 			sendMsg(canId._canID, &wd);
 		} else if (incomingByte == 's') {
 			//* posle zmenu watchdogu
 			CConfDataWatchdog wd(to2000ms);
-			CCanID canId;
+			CanID canId;
 			canId.setMacID(1);
-			canId.setFlag_fromConfiguration();
+			canId.setFlag_fromConfSetWatchdog();
 			sendMsg(canId._canID, &wd);
 		}
 	}
