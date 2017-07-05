@@ -100,11 +100,11 @@ void interruptFromCanBus() {
 	byte len = 0;
 	MsgData rxBuf;
 	CAN0.readMsgBuf(&canId._canID, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
-	DEBUG(F("-----------------") << endl << F("Receive msg:") << canId._canID << ",MacID:" << canId.getMacID() << endl);
+	DEBUG(F("-----------------") << endl << F("Receive msg:") << canId._canID << ",MacID:" << canId.getMacID());
 
 	if (canId.hasFlag_forConfiguration()) {
 		gNewRequestForConfiguration = true;
-		DEBUG(F("Configuration msg from (MacID): ") << canId.getMacID() << endl);
+		DEBUG(F("Configuration msg from (MacID): ") << canId.getMacID());
 		for (int i = 0; i < NUM_MACIDS; i++) {
 			if (gMacIDs[i] == 0) {
 				gMacIDs[i] = canId.getMacID();
@@ -120,7 +120,7 @@ void sendMsg(uint32_t canId, CDataBase * cdb) {
 	INT8U ret = CAN0.sendMsgBuf(canId, 1, cdb->getSize(), data);
 #ifdef DEBUG_BUILD
 	if (ret == CAN_OK) {
-		DEBUG(F("Send msg CanID:") << canId << ",deviceType:" << *data << endl);
+		DEBUG(F("Send msg CanID:") << canId << ",deviceType:" << cdb->getType());
 	} else {
 		DEBUG(F("Failure when send CanID:") << canId << F(",error:") << ret);
 	}
@@ -134,7 +134,7 @@ void loop() {
 		CanID canID;
 		MacID macID = 0;
 		//canID.setFlag_fromConfiguration();
-		DEBUG(F("Conf going to send ..") << endl);
+		DEBUG(F("Conf going to send .."));
 
 		for (byte i = 0; i < NUM_MACIDS; i++) {
 			if (gMacIDs[i] != 0) {
@@ -144,7 +144,7 @@ void loop() {
 				gMacIDs[i] = 0;
 				//* insert Mac address to CanBus ID
 				canID.setMacID(macID);
-				DEBUG("canid:" << canID._canID << ", macid:" << macID << endl);
+				DEBUG("canid:" << canID._canID << ", macid:" << macID);
 				//* get number of macIDs in DB
 				byte cont = 1;
 				byte countOfConf = 0;
@@ -161,11 +161,11 @@ void loop() {
 				canID.setFlag_fromConfNumber();
 				byte sndStat = CAN0.sendMsgBuf(canID._canID, 1, 1, &countOfConf);
 #ifdef DEBUG_BUILD
-				DEBUG(F("Number of configuration: ") << countOfConf << endl);
+				DEBUG(F("Number of configuration:") << countOfConf);
 				if (sndStat != CAN_OK) {
-					DEBUG(F("Error Sending Configuration!\n"));
+					DEBUG(F("Error Sending Configuration!"));
 				} else {
-					DEBUG(F("Configuration Sent Successfully!\n"));
+					DEBUG(F("Configuration Sent Successfully!"));
 				}
 #endif
 				//* get particular configuration

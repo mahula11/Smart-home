@@ -40,6 +40,7 @@ uint8_t EepromConf::getCountOfConf() {
 
 //* write whole configuration to eeprom
 void EepromConf::writeConf(const CONF * pConf) {
+	//DEBUG(VAR(pConf->count));
 	//* write number of confs
 	setCountOfConf(pConf->count);
 	//* eeprom writing start at EEPROM_ADDRESS__CONFS
@@ -49,8 +50,20 @@ void EepromConf::writeConf(const CONF * pConf) {
 	//* write particular confs
 	for (byte i = 0; i < pConf->count; i++) {
 		//* serialize selected device
+		pConf->ppConfData[i]->setModeForEeprom(true);
 		pConf->ppConfData[i]->serialize(data);
+		//DEBUG(VAR(pConf->ppConfData[i]->_type));
+		//DEBUG(VAR(data[0]) << 
+		//	VAR(data[1]) << 
+		//	VAR(data[2]) << 
+		//	VAR(data[3]) << 
+		//	VAR(data[4]) << 
+		//	VAR(data[5]) << 
+		//	VAR(data[6]) << 
+		//	VAR(data[7]));		
 		size = pConf->ppConfData[i]->getSize();
+		//DEBUG(VAR(size));
+		//DEBUG(VAR(address));
 		//* write to eeprom
 		eeprom_write_block(&data, (void*)address, size);
 		//* increase address
@@ -66,10 +79,11 @@ const CONF * EepromConf::readConf() {
 	_pConf = SmartHouse::newConf(count, getMacAddress());
 	//* eeprom reading starting on address EEPROM_ADDRESS__CONFS
 	short address = EEPROM_ADDRESS__CONFS;
-	CDataBase * pConfData;
+	CDataBase * pConfData = nullptr;
 	byte size;
 	byte data[10];
 	DEBUG(F("Number of configurations in EEPROM = ") << count);
+	
 	//* read particular conf
 	for (byte i = 0; i < count; i++) {
 		//* get type of device
@@ -82,15 +96,23 @@ const CONF * EepromConf::readConf() {
 			case DEVICE_TYPE_SWITCH:
 				pConfData = new CConfDataSwitch;				
 				break;
+			default:
+				DEBUG(F("UNKNOWN DEVICE TYPE!!!"));
+				break;
 		}
-		size = pConfData->getSize();		
-		//* read from eeprom
-		eeprom_read_block(&data, (const void*)address, size);
-		pConfData->deserialize(data);
-		//* increase address to next conf
-		address += size;
-		//* insert to global structure
-		_pConf->ppConfData[i] = pConfData;
+		if (pConfData != nullptr) {
+			//pConfData->setModeForEeprom(true);
+			size = pConfData->getSize();
+			//* incerement address, because we don't need type (first in memory stream)
+			address += 1;
+			//* read from eeprom
+			eeprom_read_block(&data, (const void*)address, size);
+			pConfData->deserialize(data);
+			//* increase address to next conf
+			address += size;
+			//* insert to global structure
+			_pConf->ppConfData[i] = pConfData;
+		}
 	}
 	return _pConf;
 }

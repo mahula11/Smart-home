@@ -12,12 +12,12 @@
 void setup() {
 	Serial.begin(115200);
 	//* write unique MAC address to EEPROM
-	uint16_t address = 2;
+	uint16_t address = 1;
 	Serial << F("MAC_ID:") << EEPROM.readInt(EEPROM_ADDRESS__MAC_ADDRESS) << endl << 
 		F("WatchdogTimeout:") << EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT) << endl <<
 		F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT) << endl;
 	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, address);
-	EEPROM.writeByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT, WATCHDOG_TIMEOUT::to1000ms);
+	EEPROM.writeByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT, WATCHDOG_TIMEOUT::to2000ms);
 	EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
 }
 
@@ -34,7 +34,8 @@ Device device;
 void watchdogSetup(void);
 
 void setup() {
-	Serial.begin(115200);
+	//Serial.begin(115200);
+	Serial.begin(921600);
 
 	MacID address = eepromConf.getMacAddress();
 	if (address == 65535) {		
@@ -44,13 +45,15 @@ void setup() {
 			delay(15000);
 		}
 	}
+	//* just for testing, for getting to new configurations
+	//EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
+	DEBUG(F("--CanDevice started!--"));
 	DEBUG(VAR(address));
-	//Serial.print("eepromConf: ");
-	//Serial.println((INT32U)&eepromConf, HEX);
-	//DEBUG("eepromConf: " << &eepromConf << endl);
+	DEBUG(F("WATCHDOG_TIMEOUT:") << EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT));
+	DEBUG(F("Conf count : ") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT));
 	device.init();
 
-	watchdogSetup();
+	//watchdogSetup();
 }
 
 void loop() {
@@ -105,12 +108,16 @@ void watchdogSetup(void) {
 	WDP0 = 1 :For 2000ms Time-out
 	*/
 
-	uint8_t wdp0 = 0;
-	uint8_t wdp1 = 0;
-	uint8_t wdp2 = 0;
-	uint8_t wdp3 = 0;
-	uint8_t a= eepromConf.getWatchdogTimeout();
+	uint32_t wdp0 = 0;
+	uint32_t wdp1 = 0;
+	uint32_t wdp2 = 0;
+	uint32_t wdp3 = 0;
+	//uint8_t a= eepromConf.getWatchdogTimeout();
 	WATCHDOG_TIMEOUT to = (WATCHDOG_TIMEOUT) eepromConf.getWatchdogTimeout();
+	//to = 3;
+	//DEBUG(to);
+	// Enter Watchdog Configuration mode:
+	//WDTCSR |= (1 << WDCE) | (1 << WDE);
 	switch (to) {
 		//case to16ms:
 		//	break;
@@ -125,28 +132,70 @@ void watchdogSetup(void) {
 		//	break;
 		case to250ms:
 			wdp2 = 1;
+			//DEBUG(F("22222"));
+			// Enter Watchdog Configuration mode:
+			WDTCSR |= (1 << WDCE) | (1 << WDE);
+			// Set Watchdog settings:
+			WDTCSR = (1 << WDIE) | (1 << WDE) | (wdp3 << WDP3) | (wdp2 << WDP2) | (wdp1 << WDP1) | (wdp0 << WDP0);
 			break;
 		case to500ms:
 			wdp0 = wdp2 = 1;
+			//DEBUG(F("33333"));
+			// Enter Watchdog Configuration mode:
+			WDTCSR |= (1 << WDCE) | (1 << WDE);
+			// Set Watchdog settings:
+			WDTCSR = (1 << WDIE) | (1 << WDE) | (wdp3 << WDP3) | (wdp2 << WDP2) | (wdp1 << WDP1) | (wdp0 << WDP0);
 			break;
 		case to1000ms:
 			wdp1 = wdp2= 1;
+			//DEBUG(F("44444444"));
+			// Enter Watchdog Configuration mode:
+			WDTCSR |= (1 << WDCE) | (1 << WDE);
+			// Set Watchdog settings:
+			WDTCSR = (1 << WDIE) | (1 << WDE) | (wdp3 << WDP3) | (wdp2 << WDP2) | (wdp1 << WDP1) | (wdp0 << WDP0);
 			break;
 		case to2000ms:
+		{
 			wdp0 = wdp1 = wdp2 = 1;
+			wdp3 = 0;
+			// Set Watchdog settings:
+			//DEBUG(F("111111"));
+			// Enter Watchdog Configuration mode:
+			WDTCSR |= (1 << WDCE) | (1 << WDE);
+			// Set Watchdog settings:
+			//WDTCSR = (1 << WDIE) | (1 << WDE) | (wdp3 << WDP3) | (wdp2 << WDP2) | (wdp1 << WDP1) | (wdp0 << WDP0);
+			WDTCSR = 79;
 			break;
+		}
 		case to4000ms:
 			wdp3 = 1;
+			//DEBUG(F("5555555555555"));
+			// Enter Watchdog Configuration mode:
+			WDTCSR |= (1 << WDCE) | (1 << WDE);
+			// Set Watchdog settings:
+			WDTCSR = (1 << WDIE) | (1 << WDE) | (wdp3 << WDP3) | (wdp2 << WDP2) | (wdp1 << WDP1) | (wdp0 << WDP0);
 			break;
 		case to8000ms:
 			wdp0 = wdp3 = 1;
+			//DEBUG(F("66666666666"));
+			// Enter Watchdog Configuration mode:
+			WDTCSR |= (1 << WDCE) | (1 << WDE);
+			// Set Watchdog settings:
+			WDTCSR = (1 << WDIE) | (1 << WDE) | (wdp3 << WDP3) | (wdp2 << WDP2) | (wdp1 << WDP1) | (wdp0 << WDP0);
 			break;
 	}
 
-	// Enter Watchdog Configuration mode:
+
+	//// Enter Watchdog Configuration mode:
 	WDTCSR |= (1 << WDCE) | (1 << WDE);
 	// Set Watchdog settings:
-	WDTCSR = (1 << WDIE) | (1 << WDE) | (wdp3 << WDP3) | (wdp2 << WDP2) | (wdp1 << WDP1) | (wdp0 << WDP0);
+	WDTCSR = (1 << WDIE) | (1 << WDE) | (0 << WDP3) | (1 << WDP2) | (1 << WDP1) | (1 << WDP0);
+	
+	//WDTCSR = (1 << WDIE) | (1 << WDE) | (wdp3 << WDP3) | (wdp2 << WDP2) | (wdp1 << WDP1) | (wdp0 << WDP0);
+
+	//DEBUG(F("Watchdog setting:"));
+	//DEBUG(WDTCSR);
+
 	sei();
 }
 
