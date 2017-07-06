@@ -116,8 +116,11 @@ void Device::update() {
 	//* pokial tento cas presiahne, tak nedovolime reset watchdogu a tym bude vynuteny reset procesoru
 //	if (millis() < s_conf.getForcedResetTime()) {
 		//* resetuje watchdog, zabrani restartu
-		//wdt_reset();
+		wdt_reset();
 //	}
+		//* test watchdog timeouts, set millis in delay higher then watchdog timer, processor will be reseting around
+		//DEBUG("po wdt_resete");
+		//delay(2500);
 		//interruptFromCanBus();
 	//* s_arrivedConf is read in interruptFromCanBus
 	//* if arrived configuration is complet, then copy it to eeprom
@@ -169,10 +172,16 @@ void Device::interruptFromCanBus() {
 
 			//* sprava moze prist z FE, bez vyziadania
 			//* nastavime timeout pre watchdog
-			//if (rxBuf[0] == DEVICE_TYPE_WATCHDOG_TIMEOUT) {
-			//	eepromConf.setWatchdogTimeout((WATCHDOG_TIMEOUT)rxBuf[1]);
-			//	continue;
-			//}
+			if (canId.hasFlag_fromConfSetWatchdog()) {
+				eepromConf.setWatchdogTimeout((WATCHDOG_TIMEOUT)rxBuf[0]);
+				continue;
+			}
+
+			//* received reset from conf
+			//* disable wdt_reset
+			if (canId.hasFlag_fromConfReset()) {
+
+			}
 
 			//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
 			//* getCount vrati nulu, pretoze este neviemme pocet sprav

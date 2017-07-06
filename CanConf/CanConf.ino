@@ -192,10 +192,18 @@ void loop() {
 		if (incomingByte == 'r') {
 			//*posle reset
 			CanID canID;
-			canID.setMacID(0);
-			//canID.setFlag_fromCo();
+			canID.setMacID(1);
+			canID.setFlag_fromConfReset();
+			CConfDataReset reset;
+			sendMsg(canID._canID, &reset);
 		} else if (incomingByte == 't') {
 			//* posle reset s adresou
+			//*posle reset
+			CanID canID;
+			canID.setMacID(2);
+			canID.setFlag_fromConfReset();
+			CConfDataReset reset;
+			sendMsg(canID._canID, &reset);
 		} else if (incomingByte == 'a') {
 			//* posle zmenu watchdogu
 			CConfDataWatchdog wd(to8000ms);
@@ -205,7 +213,7 @@ void loop() {
 			sendMsg(canId._canID, &wd);
 		} else if (incomingByte == 's') {
 			//* posle zmenu watchdogu
-			CConfDataWatchdog wd(to2000ms);
+			CConfDataWatchdog wd(to1000ms);
 			CanID canId;
 			canId.setMacID(1);
 			canId.setFlag_fromConfSetWatchdog();
