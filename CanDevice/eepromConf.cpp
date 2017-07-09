@@ -22,6 +22,14 @@ void EepromConf::setWatchdogTimeout(uint8_t to) {
 	EEPROM.writeByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT, to);
 }
 
+uint8_t EepromConf::getAutoResetTime() {
+	return EEPROM.readByte(EEPROM_ADDRESS__AUTO_RESET_TIME);
+}
+
+void EepromConf::setAutoResetTime(uint8_t ar) {
+	EEPROM.writeByte(EEPROM_ADDRESS__AUTO_RESET_TIME, ar);
+}
+
 //* nastavi pocet sprav, ktore sa idu zapisat do eeprom
 void EepromConf::setCountOfConf(uint8_t count) {
 	EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, count);

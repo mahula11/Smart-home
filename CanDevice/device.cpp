@@ -114,10 +114,10 @@ void Device::update() {
 	//* vynuteny restart
 	//* pokial je millis() mensi ako nastaveny cas (4 hodiny), dovtedy sa watchdog bude resetovat. 
 	//* pokial tento cas presiahne, tak nedovolime reset watchdogu a tym bude vynuteny reset procesoru
-//	if (millis() < s_conf.getForcedResetTime()) {
+	if (millis() < s_conf.get) {
 		//* resetuje watchdog, zabrani restartu
 		wdt_reset();
-//	}
+	}
 		//* test watchdog timeouts, set millis in delay higher then watchdog timer, processor will be reseting around
 		//DEBUG("po wdt_resete");
 		//delay(2500);
@@ -173,6 +173,7 @@ void Device::interruptFromCanBus() {
 			//* sprava moze prist z FE, bez vyziadania
 			//* nastavime timeout pre watchdog
 			if (canId.hasFlag_fromConfSetWatchdog()) {
+				DEBUG(F("Set watchdog message, val:") << rxBuf[0]);
 				eepromConf.setWatchdogTimeout((WATCHDOG_TIMEOUT)rxBuf[0]);
 				continue;
 			}
@@ -180,7 +181,17 @@ void Device::interruptFromCanBus() {
 			//* received reset from conf
 			//* disable wdt_reset
 			if (canId.hasFlag_fromConfReset()) {
+				DEBUG(F("Reset message!"));
+				wdt_enable(WDTO_15MS);
+				delay(10000000);
+				DEBUG(F("Reset message11!"));
+				continue;
+			}
 
+			if (canId.hasFlag_fromConfAutoResetTime()) {
+				DEBUG(F("AutoReset message, val:") << rxBuf[0]);
+				eepromConf.setAutoResetTime(rxBuf[0]);
+				continue;
 			}
 
 			//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu

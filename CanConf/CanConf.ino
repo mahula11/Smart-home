@@ -114,13 +114,13 @@ void interruptFromCanBus() {
 	}
 }
 
-void sendMsg(uint32_t canId, CDataBase * cdb) {
+void sendMsg(uint32_t canId, CDataBase & cdb) {
 	byte data[8];
-	cdb->serialize(data);
-	INT8U ret = CAN0.sendMsgBuf(canId, 1, cdb->getSize(), data);
+	cdb.serialize(data);
+	INT8U ret = CAN0.sendMsgBuf(canId, 1, cdb.getSize(), data);
 #ifdef DEBUG_BUILD
 	if (ret == CAN_OK) {
-		DEBUG(F("Send msg CanID:") << canId << ",deviceType:" << cdb->getType());
+		DEBUG(F("Send msg CanID:") << canId << ",deviceType:" << cdb.getType());
 	} else {
 		DEBUG(F("Failure when send CanID:") << canId << F(",error:") << ret);
 	}
@@ -175,7 +175,7 @@ void loop() {
 					if (pData->_macID == macID) {
 						canID.clearConfigPart();
 						canID.setConfigPart(pData->_pData->getType());
-						sendMsg(canID._canID, pData->_pData);
+						sendMsg(canID._canID, *pData->_pData);
 					}
 					pData = &gListOfConfs[++ii];
 				}
@@ -190,34 +190,47 @@ void loop() {
 		Serial.print(F("I received: "));
 		Serial.println(incomingByte, DEC);
 		if (incomingByte == 'r') {
-			//*posle reset
+			//*posle reset na MacID 1
 			CanID canID;
 			canID.setMacID(1);
 			canID.setFlag_fromConfReset();
 			CConfDataReset reset;
-			sendMsg(canID._canID, &reset);
+			sendMsg(canID._canID, reset);
 		} else if (incomingByte == 't') {
-			//* posle reset s adresou
-			//*posle reset
+			//* posle reset na MacID 2
 			CanID canID;
 			canID.setMacID(2);
 			canID.setFlag_fromConfReset();
 			CConfDataReset reset;
-			sendMsg(canID._canID, &reset);
+			sendMsg(canID._canID, reset);
 		} else if (incomingByte == 'a') {
 			//* posle zmenu watchdogu
 			CConfDataWatchdog wd(to8000ms);
 			CanID canId;
 			canId.setMacID(1);
 			canId.setFlag_fromConfSetWatchdog();
-			sendMsg(canId._canID, &wd);
+			sendMsg(canId._canID, wd);
 		} else if (incomingByte == 's') {
 			//* posle zmenu watchdogu
 			CConfDataWatchdog wd(to1000ms);
 			CanID canId;
 			canId.setMacID(1);
 			canId.setFlag_fromConfSetWatchdog();
-			sendMsg(canId._canID, &wd);
+			sendMsg(canId._canID, wd);
+		} else if (incomingByte == 'p') {
+			//* nastavi auto reset
+			CConfDataAutoReset ar(ar10s);
+			CanID canId;
+			canId.setMacID(1);
+			canId.setFlag_fromConfAutoResetTime();
+			sendMsg(canId._canID, ar);
+		} else if (incomingByte == 'o') {
+			//* nastavi auto reset
+			CConfDataAutoReset ar(arDisable);
+			CanID canId;
+			canId.setMacID(1);
+			canId.setFlag_fromConfAutoResetTime();
+			sendMsg(canId._canID, ar);
 		}
 	}
 

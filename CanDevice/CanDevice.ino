@@ -18,6 +18,7 @@ void setup() {
 		F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT) << endl;
 	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, address);
 	EEPROM.writeByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT, WATCHDOG_TIMEOUT::to2000ms);
+	EEPROM.writeByte(EEPROM_ADDRESS__AUTO_RESET_TIME, AUTO_RESET_TIMES::arDisable);
 	EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
 }
 
@@ -48,12 +49,25 @@ void setup() {
 			delay(15000);
 		}
 	}
-	//* just for testing, for getting to new configurations
-	//EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
+	
+	
+	bool needNewConf = false;
+	//* UNCOMMENT FOR GETTING NEW CONF
+	//needNewConf = true;
+
+
 	DEBUG(F("--CanDevice started!--"));
 	DEBUG(VAR(address));
 	DEBUG(F("WATCHDOG_TIMEOUT:") << EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT));
-	DEBUG(F("Conf count : ") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT));
+	DEBUG(F("AutoResetTime:") << EEPROM.readByte(EEPROM_ADDRESS__AUTO_RESET_TIME));
+	DEBUG(F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT) 
+							 << (needNewConf ? F(", but counter is reseted!") : F("")));
+	if (needNewConf) {
+		//* set to zero conter of configurations
+		//* this enforce new conf
+		EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
+	}
+
 	device.init();
 
 	watchdogSetup();
@@ -87,7 +101,7 @@ void watchdogSetup() {
 	// WDTO_8S
 
 	WATCHDOG_TIMEOUT to = (WATCHDOG_TIMEOUT)eepromConf.getWatchdogTimeout();
-	DEBUG(F("WATCHDOG_TIMEOUT1:") << to);
+	//DEBUG(F("WATCHDOG_TIMEOUT1:") << to);
 	switch (to) {
 		case to250ms:
 			wdt_enable(WDTO_250MS);
