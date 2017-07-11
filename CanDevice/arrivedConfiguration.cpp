@@ -3,21 +3,23 @@
 
 ArrivedConfiguration::ArrivedConfiguration() {
 	clean();
+	_confCount = 0;
 }
 
 ArrivedConfiguration::~ArrivedConfiguration() {
 }
 
 bool ArrivedConfiguration::isComplet() {
-	return (_numberOfAddedConf == _pConf->count);
+	return (_numberOfAddedConf == _confCount);
 }
 
 uint8_t ArrivedConfiguration::getCount() {
-	return _pConf->count;
+	return _confCount;
 }
 
 void ArrivedConfiguration::setCount(uint8_t count) {
 	_pConf = SmartHouse::newConf(count);
+	_confCount = count;
 }
 
 void ArrivedConfiguration::clean() {

@@ -231,6 +231,13 @@ void loop() {
 			canId.setMacID(1);
 			canId.setFlag_fromConfAutoResetTime();
 			sendMsg(canId._canID, ar);
+		} else if (incomingByte == 'i') {
+			//* nastavi auto reset
+			CConfDataAutoReset ar(ar1m);
+			CanID canId;
+			canId.setMacID(1);
+			canId.setFlag_fromConfAutoResetTime();
+			sendMsg(canId._canID, ar);
 		}
 	}
 

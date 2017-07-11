@@ -9,6 +9,7 @@ private:
 	//* tato premenna je menena pridavanim configuracie a zaroven sa kontroluje v loope, ci uz sa moze konfiguracia zapisat do eeprom (preto volatile)
 	volatile uint8_t _numberOfAddedConf;
 	CONF * _pConf;
+	uint8_t _confCount;
 public:
 	ArrivedConfiguration();
 	~ArrivedConfiguration();

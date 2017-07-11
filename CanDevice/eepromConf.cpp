@@ -47,16 +47,16 @@ uint8_t EepromConf::getCountOfConf() {
 //}
 
 //* write whole configuration to eeprom
-void EepromConf::writeConf(const CONF * pConf) {
+void EepromConf::writeConf(uint8_t confCount, const CONF * pConf) {
 	//DEBUG(VAR(pConf->count));
 	//* write number of confs
-	setCountOfConf(pConf->count);
+	setCountOfConf(confCount);
 	//* eeprom writing start at EEPROM_ADDRESS__CONFS
 	short address = EEPROM_ADDRESS__CONFS;
 	byte data[10];
 	byte size;
 	//* write particular confs
-	for (byte i = 0; i < pConf->count; i++) {
+	for (byte i = 0; i < confCount; i++) {
 		//* serialize selected device
 		pConf->ppConfData[i]->setModeForEeprom(true);
 		pConf->ppConfData[i]->serialize(data);
@@ -84,7 +84,8 @@ const CONF * EepromConf::readConf() {
 	//* from eeprom read number of confs
 	uint8_t count = getCountOfConf();
 	//* make new configuration
-	_pConf = SmartHouse::newConf(count, getMacAddress());
+	_pConf = SmartHouse::newConf(count); // , getMacAddress());
+	//_pConf->autoResetTime = EEPROM.readByte(EEPROM_ADDRESS__AUTO_RESET_TIME);
 	//* eeprom reading starting on address EEPROM_ADDRESS__CONFS
 	short address = EEPROM_ADDRESS__CONFS;
 	CDataBase * pConfData = nullptr;

@@ -14,11 +14,17 @@ private:
 	CONF * _pConf;
 	VALUE * _pValues;
 	bool _modified;
-	//getForcedResetTime
+
+	MacID _macID;
+	uint8_t _watchdogTimeout;
+	uint8_t _autoResetTime;
+	uint8_t _confCount;
 
 public:
 	Configuration();
 	~Configuration();
+
+	void setConfigurationStatic(uint8_t confCount, uint8_t watchdogTimeout, uint8_t autoResetTime);
 
 	byte getCount();
 	uint16_t getMacAddress();
@@ -28,5 +34,7 @@ public:
 	VALUE getConfValue(byte index);
 	bool isModifiedValue();
 	void resetModifiedValue();
+	unsigned long getAutoResetTime();
+	void setAutoResetTime(uint8_t val);
 };
 

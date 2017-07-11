@@ -32,7 +32,7 @@ public:
 
 	uint16_t getMacAddress();
 	uint8_t getCountOfConf();
-	void writeConf(const CONF * pConf);
+	void writeConf(uint8_t confCount, const CONF * pConf);
 	const CONF * readConf();
 
 	uint8_t getWatchdogTimeout();

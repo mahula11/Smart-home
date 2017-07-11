@@ -12,9 +12,10 @@
 void setup() {
 	Serial.begin(115200);
 	//* write unique MAC address to EEPROM
-	uint16_t address = 1;
+	uint16_t address = 2;
 	Serial << F("MAC_ID:") << EEPROM.readInt(EEPROM_ADDRESS__MAC_ADDRESS) << endl << 
 		F("WatchdogTimeout:") << EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT) << endl <<
+		F("AutoResetTime:") << EEPROM.readByte(EEPROM_ADDRESS__AUTO_RESET_TIME) << endl <<
 		F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT) << endl;
 	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, address);
 	EEPROM.writeByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT, WATCHDOG_TIMEOUT::to2000ms);
@@ -57,7 +58,7 @@ void setup() {
 
 
 	DEBUG(F("--CanDevice started!--"));
-	DEBUG(VAR(address));
+	DEBUG(F("MacID:") << address);
 	DEBUG(F("WATCHDOG_TIMEOUT:") << EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT));
 	DEBUG(F("AutoResetTime:") << EEPROM.readByte(EEPROM_ADDRESS__AUTO_RESET_TIME));
 	DEBUG(F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT) 

@@ -37,6 +37,8 @@ void Device::init() {
 
 	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
 
+	s_conf.setConfigurationStatic(eepromConf.getCountOfConf(), eepromConf.getWatchdogTimeout(), eepromConf.getAutoResetTime());
+
 	//* skontroluje, ci mame konfiguracne spravy. pokial nie, tak treba poziadat o konfiguraciu
 	if (eepromConf.getCountOfConf()) {
 		//* nacitaj conf
@@ -114,7 +116,7 @@ void Device::update() {
 	//* vynuteny restart
 	//* pokial je millis() mensi ako nastaveny cas (4 hodiny), dovtedy sa watchdog bude resetovat. 
 	//* pokial tento cas presiahne, tak nedovolime reset watchdogu a tym bude vynuteny reset procesoru
-	if (millis() < s_conf.get) {
+	if (s_conf.getAutoResetTime() == 0 || millis() < s_conf.getAutoResetTime()) {
 		//* resetuje watchdog, zabrani restartu
 		wdt_reset();
 	}
@@ -127,7 +129,7 @@ void Device::update() {
 	if (s_arrivedConf && s_arrivedConf->isComplet()) {		
 		DEBUG("New conf will be processed");
 		//* zapiseme do eeprom
-		eepromConf.writeConf(s_arrivedConf->getConf());
+		eepromConf.writeConf(s_arrivedConf->getCount(), s_arrivedConf->getConf());
 		//* zapiseme do Configuration
 		s_conf.setConfiguration(eepromConf.readConf());
 		setPins();
@@ -149,11 +151,11 @@ void Device::update() {
 	s_conf.resetModifiedValue();
 }
 
-volatile long gCounter = 0;
+volatile unsigned long gCounter = 0;
 
 void Device::interruptFromCanBus() {
 	//Device * instance = getInstance();
-	volatile long counter = gCounter++;
+	volatile unsigned long counter = gCounter++;
 	DEBUG(F("Start interruptFromCanBus:") << counter << F(",milis:") << millis());
 	volatile CanID canId;
 	volatile byte len = 0;
@@ -191,6 +193,7 @@ void Device::interruptFromCanBus() {
 			if (canId.hasFlag_fromConfAutoResetTime()) {
 				DEBUG(F("AutoReset message, val:") << rxBuf[0]);
 				eepromConf.setAutoResetTime(rxBuf[0]);
+				s_conf.setAutoResetTime(rxBuf[0]);
 				continue;
 			}
 
@@ -349,7 +352,7 @@ void Device::sendRequest_forConfiguration() {
 void Device::sendRequest_fromSwitch(uint8_t gpio, byte pinValue) {
 	//* send message
 	CanID canID;
-	canID.setMacID(s_conf.getMacAddress());
+	canID.setMacID(eepromConf.getMacAddress());
 	canID.setFlag_fromSwitch();
 	CTrafficDataSwitch dataSwitch(gpio, pinValue);
 	MsgData data = {0};
