@@ -32,6 +32,7 @@ private:
 	//static byte s_numberOfArrivedMsg;
 
 	static void interruptFromCanBus();
+	void sendMsg(CDataBase & cdb);
 	void sendRequest_forConfiguration();
 	void sendRequest_askSwitchForValue(MacID macId, uint8_t pin);
 	void static sendRequest_fromSwitch(byte gpio, byte pinValue);

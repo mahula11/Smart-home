@@ -53,9 +53,12 @@ void Device::init() {
 void Device::setPins() {
 	for (int i = 0; i < s_conf.getCount(); i++) {
 		switch (s_conf.getConf(i)->getType()) {
-			case DEVICE_TYPE_LIGHT:
+			case DEVICE_TYPE_LIGHT: {
 				pinMode(((CConfDataLight*)s_conf.getConf(i))->_gpio, OUTPUT);
-				sendRequest_askSwitchForValue(((CConfDataLight*)s_conf.getConf(i))->_switchMacID, ((CConfDataLight*)s_conf.getConf(i))->_switchGPIO);
+				CTrafficDataAskSwitchForData asfd(((CConfDataLight*)s_conf.getConf(i))->_switchMacID, ((CConfDataLight*)s_conf.getConf(i))->_switchGPIO);
+				//sendRequest_askSwitchForValue(((CConfDataLight*)s_conf.getConf(i))->_switchMacID, ((CConfDataLight*)s_conf.getConf(i))->_switchGPIO);
+				sendMsg(asfd);
+			}
 				break;
 			//case DEVICE_TYPE_SOCKET:
 			//	//pinMode(CanExt::getLightGPIO(pData), OUTPUT);
@@ -320,19 +323,32 @@ void Device::interruptFromCanBus() {
 //	DEBUG(F("End interruptFromCanBus:") << counter << F(",milis:") << millis());
 //}
 
-void Device::sendRequest_askSwitchForValue(MacID macId, uint8_t pin) {
-	DEBUG(F("Ask switch ") << macId << F(", pin ") << pin << F(" for value"));
-	CanID canID;
-	canID.setMacID(macId);
-	canID.setFlag_askSwitchForValue();
-	byte data = pin;
-	byte sndStat = s_can.sendMsgBuf(canID._canID, 1, &data);
-	if (sndStat != CAN_OK) {
-		DEBUG(F("Error Sending Configuration"));
+void Device::sendMsg(CDataBase & cdb) {
+	byte data[8];
+	cdb.serialize(data);
+	uint8_t ret = s_can.sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
+#ifdef DEBUG_BUILD
+	if (ret == CAN_OK) {
+		DEBUG(F("Send msg CanID:") << cdb._destCanID._canID << ",deviceType:" << cdb.getType());
 	} else {
-		DEBUG(F("Configuration Sent Successfully"));
+		DEBUG(F("Failure when send CanID:") << cdb._destCanID._canID << F(",error:") << ret);
 	}
+#endif
 }
+
+//void Device::sendRequest_askSwitchForValue(MacID macId, uint8_t pin) {
+//	DEBUG(F("Ask switch for value, macId:") << macId << F(", pin ") << pin);
+//	CanID canID;
+//	canID.setMacID(macId);
+//	canID.setFlag_askSwitchForValue();
+//	byte data = pin;
+//	byte sndStat = s_can.sendMsgBuf(canID._canID, 1, &data);
+//	if (sndStat != CAN_OK) {
+//		DEBUG(F("Error Sending Configuration"));
+//	} else {
+//		DEBUG(F("Configuration Sent Successfully"));
+//	}
+//}
 
 void Device::sendRequest_forConfiguration() {
 	CanID canID;
@@ -354,7 +370,7 @@ void Device::sendRequest_fromSwitch(uint8_t gpio, byte pinValue) {
 	CanID canID;
 	canID.setMacID(eepromConf.getMacAddress());
 	canID.setFlag_fromSwitch();
-	CTrafficDataSwitch dataSwitch(gpio, pinValue);
+	CTrafficDataSwitch dataSwitch(eepromConf.getMacAddress(), gpio, pinValue);
 	MsgData data = {0};
 	dataSwitch.serialize(data);
 	DEBUG("data:" << PRINT_DATA(data));
