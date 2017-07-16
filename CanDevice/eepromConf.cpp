@@ -100,10 +100,10 @@ const CONF * EepromConf::readConf() {
 		DEBUG(F("deviceType = ") << deviceType);
 		switch (deviceType) {
 			case DEVICE_TYPE_LIGHT:
-				pConfData = new CConfDataLight;
+				pConfData = new CConfMsg_light;
 				break;
 			case DEVICE_TYPE_SWITCH:
-				pConfData = new CConfDataSwitch;				
+				pConfData = new CConfMsg_switch;				
 				break;
 			default:
 				DEBUG(F("UNKNOWN DEVICE TYPE!!!"));

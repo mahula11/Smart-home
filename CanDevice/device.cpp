@@ -46,7 +46,9 @@ void Device::init() {
 		setPins();
 	} else {
 		//* pocet je 0, takze ziadnu konfiguraciu v eeprom nemame, treba poziadat o novu.
-		sendRequest_forConfiguration();
+		//sendRequest_forConfiguration();
+		CConfMsg_askForConfiguration afc(eepromConf.getMacAddress());
+		sendMsg(afc);
 	}
 }
 
@@ -54,9 +56,9 @@ void Device::setPins() {
 	for (int i = 0; i < s_conf.getCount(); i++) {
 		switch (s_conf.getConf(i)->getType()) {
 			case DEVICE_TYPE_LIGHT: {
-				pinMode(((CConfDataLight*)s_conf.getConf(i))->_gpio, OUTPUT);
-				CTrafficDataAskSwitchForData asfd(((CConfDataLight*)s_conf.getConf(i))->_switchMacID, ((CConfDataLight*)s_conf.getConf(i))->_switchGPIO);
-				//sendRequest_askSwitchForValue(((CConfDataLight*)s_conf.getConf(i))->_switchMacID, ((CConfDataLight*)s_conf.getConf(i))->_switchGPIO);
+				pinMode(((CConfMsg_light*)s_conf.getConf(i))->_gpio, OUTPUT);
+				CTrafficMsg_askSwitchForData asfd(((CConfMsg_light*)s_conf.getConf(i))->_switchMacID, ((CConfMsg_light*)s_conf.getConf(i))->_switchGPIO);
+				//sendRequest_askSwitchForValue(((CConfMsg_light*)s_conf.getConf(i))->_switchMacID, ((CConfMsg_light*)s_conf.getConf(i))->_switchGPIO);
 				sendMsg(asfd);
 			}
 				break;
@@ -68,7 +70,7 @@ void Device::setPins() {
 			//case DEVICE_TYPE_STAIR_CASE_SWITCH:
 			//	break;
 			case DEVICE_TYPE_SWITCH:
-				pinMode(((CConfDataSwitch*)s_conf.getConf(i))->_gpio, INPUT_PULLUP);
+				pinMode(((CConfMsg_switch*)s_conf.getConf(i))->_gpio, INPUT_PULLUP);
 				break;
 		}
 	}
@@ -81,8 +83,8 @@ void Device::checkModifiedData(CDataBase * pConfData, byte index) {
 		if (s_conf.getConfValue(index)._modified) {
 			switch (pConfData->getType()) {
 				case DEVICE_TYPE_LIGHT:
-					DEBUG("Set light on PIN:" << ((CConfDataLight*)pConfData)->_gpio << " value:" << s_conf.getConfValue(index)._value);
-					digitalWrite(((CConfDataLight*)pConfData)->_gpio, s_conf.getConfValue(index)._value);
+					DEBUG("Set light on PIN:" << ((CConfMsg_light*)pConfData)->_gpio << " value:" << s_conf.getConfValue(index)._value);
+					digitalWrite(((CConfMsg_light*)pConfData)->_gpio, s_conf.getConfValue(index)._value);
 					break;
 				//case DEVICE_TYPE_LIGHT_WITH_DIMMER:
 				//	break;
@@ -99,13 +101,15 @@ void Device::checkValueOnPins(CDataBase * pConfData, byte index) {
 		//	break;
 		case DEVICE_TYPE_SWITCH:
 		{
-			byte pinValue = digitalRead(((CConfDataSwitch*)pConfData)->_gpio);			
+			byte pinValue = digitalRead(((CConfMsg_switch*)pConfData)->_gpio);			
 			//* if values are different, then send message to the lights
 			if (pinValue != s_conf.getConfValue(index)._value) {
 				DEBUG(VAR(pinValue));
 				DEBUG(F("_value:") << s_conf.getConfValue(index)._value);
 
-				sendRequest_fromSwitch(((CConfDataSwitch*)pConfData)->_gpio, pinValue);
+				//sendRequest_fromSwitch(((CConfMsg_switch*)pConfData)->_gpio, pinValue);
+				CTrafficMsg_fromSwitch msgFromSwitch(eepromConf.getMacAddress(), ((CConfMsg_switch*)pConfData)->_gpio, pinValue);
+				sendMsg(msgFromSwitch);
 
 				//* set value without modify flag
 				s_conf.setConfValue(index, pinValue, false);
@@ -208,10 +212,10 @@ void Device::interruptFromCanBus() {
 				CDataBase * pConfData;
 				switch (type) {
 					case DEVICE_TYPE_SWITCH:
-						pConfData = new CConfDataSwitch(rxBuf);
+						pConfData = new CConfMsg_switch(rxBuf);
 						break;
 					case DEVICE_TYPE_LIGHT:
-						pConfData = new CConfDataLight(rxBuf);
+						pConfData = new CConfMsg_light(rxBuf);
 						break;
 				}
 				s_arrivedConf->addConf(pConfData);
@@ -223,12 +227,12 @@ void Device::interruptFromCanBus() {
 		} else if (canId.hasFlag_fromSwitch()) { //* message from switch to lights
 			DEBUG(F("Messsage from switch arrived"));
 			//* teraz skontrolovat ci ID vypinaca patri niektoremu vypinacu v nasej konfiguracii (pre niektoru ziarovku)
-			CTrafficDataSwitch switchData(rxBuf);
+			CTrafficMsg_fromSwitch switchData(rxBuf);
 			for (byte i = 0; i < s_conf.getCount(); i++) {
 				//* vyhladavame len typ "ziarovky" a potom ich IDcka vypinacov
 				//* 0 - typ (ziarovka), 1 - gpio, 2 - id vypinaca
 				CDataBase * pData = s_conf.getConf(i);
-				if (pData->getType() == DEVICE_TYPE_LIGHT && ((CConfDataLight*)pData)->_switchMacID == canId.getMacID() && ((CConfDataLight*)pData)->_switchGPIO == switchData._gpio) {
+				if (pData->getType() == DEVICE_TYPE_LIGHT && ((CConfMsg_light*)pData)->_switchMacID == canId.getMacID() && ((CConfMsg_light*)pData)->_switchGPIO == switchData._gpio) {
 					s_conf.setConfValue(i, switchData._value, true);
 				}
 			}
@@ -237,7 +241,10 @@ void Device::interruptFromCanBus() {
 
 			byte gpio = rxBuf[0];
 			byte pinValue = digitalRead(gpio);
-			sendRequest_fromSwitch(gpio, pinValue);
+			//sendRequest_fromSwitch(gpio, pinValue);
+			CTrafficMsg_fromSwitch msgFromSwitch(eepromConf.getMacAddress(), gpio, pinValue);
+			sendMsg(msgFromSwitch);
+
 		}
 	}
 	DEBUG(F("End interruptFromCanBus:") << counter << F(",milis:") << millis());
@@ -289,10 +296,10 @@ void Device::interruptFromCanBus() {
 //				CDataBase * pConfData;
 //				switch (type) {
 //					case DEVICE_TYPE_SWITCH:
-//						pConfData = new CConfDataSwitch(rxBuf);
+//						pConfData = new CConfMsg_switch(rxBuf);
 //						break;
 //					case DEVICE_TYPE_LIGHT:
-//						pConfData = new CConfDataLight(rxBuf);
+//						pConfData = new CConfMsg_light(rxBuf);
 //						break;
 //					default:
 //						DEBUG(F("UNSUPPORTED DEVICE!!!"));
@@ -308,7 +315,7 @@ void Device::interruptFromCanBus() {
 //				//* vyhladavame len typ "ziarovky" a potom ich IDcka vypinacov
 //				//* 0 - typ (ziarovka), 1 - gpio, 2 - id vypinaca
 //				CDataBase * pData = s_conf.getConf(i);
-//				if (pData->getType() == DEVICE_TYPE_LIGHT && ((CConfDataLight*)pData)->_switchMacID == canId.getMacID() && ((CConfDataLight*)pData)->_switchGPIO == switchData._gpio) {
+//				if (pData->getType() == DEVICE_TYPE_LIGHT && ((CConfMsg_light*)pData)->_switchMacID == canId.getMacID() && ((CConfMsg_light*)pData)->_switchGPIO == switchData._gpio) {
 //					s_conf.setConfValue(i, switchData._value, true);
 //				}
 //			}
@@ -350,34 +357,34 @@ void Device::sendMsg(CDataBase & cdb) {
 //	}
 //}
 
-void Device::sendRequest_forConfiguration() {
-	CanID canID;
-	canID.setMacID(eepromConf.getMacAddress());
-	canID.setFlag_forConfiguration();
-
-	DEBUG(F("Send request for configuration, canID:") << eepromConf.getMacAddress());
-	byte data;
-	byte sndStat = s_can.sendMsgBuf(canID._canID, 0, &data);
-	if (sndStat != CAN_OK) {
-		DEBUG(F("Error Sending Configuration"));
-	} else {
-		DEBUG(F("Configuration Sent Successfully"));
-	}
-}
-
-void Device::sendRequest_fromSwitch(uint8_t gpio, byte pinValue) {
-	//* send message
-	CanID canID;
-	canID.setMacID(eepromConf.getMacAddress());
-	canID.setFlag_fromSwitch();
-	CTrafficDataSwitch dataSwitch(eepromConf.getMacAddress(), gpio, pinValue);
-	MsgData data = {0};
-	dataSwitch.serialize(data);
-	DEBUG("data:" << PRINT_DATA(data));
-	byte sndStat = s_can.sendMsgBuf(canID._canID, dataSwitch.getSize(), data);
-	if (sndStat != CAN_OK) {
-		Serial << F("Error Sending Message\n");
-	} else {
-		Serial << F("Message Sent Successfully\n");
-	}
-}
+//void Device::sendRequest_forConfiguration() {
+//	CanID canID;
+//	canID.setMacID(eepromConf.getMacAddress());
+//	canID.setFlag_forConfiguration();
+//
+//	DEBUG(F("Send request for configuration, canID:") << eepromConf.getMacAddress());
+//	byte data;
+//	byte sndStat = s_can.sendMsgBuf(canID._canID, 0, &data);
+//	if (sndStat != CAN_OK) {
+//		DEBUG(F("Error Sending Configuration"));
+//	} else {
+//		DEBUG(F("Configuration Sent Successfully"));
+//	}
+//}
+//
+//void Device::sendRequest_fromSwitch(uint8_t gpio, byte pinValue) {
+//	//* send message
+//	CanID canID;
+//	canID.setMacID(eepromConf.getMacAddress());
+//	canID.setFlag_fromSwitch();
+//	CTrafficMsg_fromSwitch dataSwitch(eepromConf.getMacAddress(), gpio, pinValue);
+//	MsgData data = {0};
+//	dataSwitch.serialize(data);
+//	DEBUG("data:" << PRINT_DATA(data));
+//	byte sndStat = s_can.sendMsgBuf(canID._canID, dataSwitch.getSize(), data);
+//	if (sndStat != CAN_OK) {
+//		Serial << F("Error Sending Message\n");
+//	} else {
+//		Serial << F("Message Sent Successfully\n");
+//	}
+//}
