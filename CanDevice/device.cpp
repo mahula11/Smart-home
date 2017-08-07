@@ -42,14 +42,17 @@ void Device::init() {
 	//* skontroluje, ci mame konfiguracne spravy. pokial nie, tak treba poziadat o konfiguraciu
 	if (eepromConf.getCountOfConf()) {
 		//* nacitaj conf
+		DEBUG(F("Set conf from eeprom."));
 		s_conf.setConfiguration(eepromConf.readConf());
 		setPins();
 	} else {
 		//* pocet je 0, takze ziadnu konfiguraciu v eeprom nemame, treba poziadat o novu.
 		//sendRequest_forConfiguration();
+		DEBUG(F("Device will ask for conf."));
 		CConfMsg_askForConfiguration afc(eepromConf.getMacAddress());
 		sendMsg(afc);
 	}
+	DEBUG(F("Init is complet!"));
 }
 
 void Device::setPins() {
@@ -107,12 +110,12 @@ void Device::checkValueOnPins(CDataBase * pConfData, byte index) {
 				DEBUG(VAR(pinValue));
 				DEBUG(F("_value:") << s_conf.getConfValue(index)._value);
 
+				//* set value without modify flag
+				s_conf.setConfValue(index, pinValue, false);				
+
 				//sendRequest_fromSwitch(((CConfMsg_switch*)pConfData)->_gpio, pinValue);
 				CTrafficMsg_fromSwitch msgFromSwitch(eepromConf.getMacAddress(), ((CConfMsg_switch*)pConfData)->_gpio, pinValue);
-				sendMsg(msgFromSwitch);
-
-				//* set value without modify flag
-				s_conf.setConfValue(index, pinValue, false);
+				sendMsg(msgFromSwitch);			
 			}
 		}
 		break;
@@ -208,7 +211,7 @@ void Device::interruptFromCanBus() {
 			//* getCount vrati nulu, pretoze este neviemme pocet sprav
 			if (s_arrivedConf->getCount()) {
 				byte type = canId.getConfigPart();
-				DEBUG(F("Conf arrived for:") << type);
+				DEBUG(F("Conf arrived for type:") << type);
 				CDataBase * pConfData;
 				switch (type) {
 					case DEVICE_TYPE_SWITCH:
@@ -221,7 +224,7 @@ void Device::interruptFromCanBus() {
 				s_arrivedConf->addConf(pConfData);
 			} else {
 				//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
-				DEBUG(F("Number of confs arrived:") << rxBuf[0]);
+				DEBUG(F("Number of confs will arrive:") << rxBuf[0]);
 				s_arrivedConf->setCount(rxBuf[0]);
 			}
 		} else if (canId.hasFlag_fromSwitch()) { //* message from switch to lights

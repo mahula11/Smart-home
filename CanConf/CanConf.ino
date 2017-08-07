@@ -134,7 +134,7 @@ void loop() {
 		//CanID canID;
 		MacID macID;
 		//canID.setFlag_fromConfiguration();
-		DEBUG(F("Conf going to send .."));
+		//DEBUG(F("Conf going to send .."));
 
 		for (byte i = 0; i < NUM_MACIDS; i++) {
 			if (gMacIDs[i] != 0) {
@@ -144,7 +144,7 @@ void loop() {
 				gMacIDs[i] = 0;
 				//* insert Mac address to CanBus ID
 				//canID.setMacID(macID);
-				DEBUG(F("macid:") << macID);
+				//DEBUG(F("macid:") << macID);
 				//* get number of macIDs in DB
 				byte cont = 1;
 				byte countOfConf = 0;
@@ -158,6 +158,7 @@ void loop() {
 					}
 					pData = &gListOfConfs[++ii];
 				}
+				DEBUG(F("Going to send 1+") << countOfConf << F(" messages to MacID:") << macID);
 				//* send number of configuration
 				//canID.setFlag_fromConfNumber();
 				CConfMsg_numOfConf dc(macID, countOfConf);
