@@ -31,6 +31,7 @@ CDataBase * Configuration::getConf(byte index) {
 		return (_pConf->ppConfData[index]);
 	} else {
 		DEBUG(F("Configuration is empty"));
+		return nullptr;
 	}
 }
 
@@ -47,8 +48,8 @@ void Configuration::setConfValue(byte index, byte value, bool modifyFlag) {
 	_modified = true;
 }
 
-VALUE Configuration::getConfValue(byte index) {
-	return _pValues[index];
+VALUE * Configuration::getConfValue(byte index) {
+	return &_pValues[index];
 }
 
 bool Configuration::isModifiedValue() {

@@ -31,7 +31,7 @@ public:
 	void setConfiguration(CONF * pConf);
 	CDataBase * getConf(byte index);
 	void setConfValue(byte index, byte value, bool modifyFlag);
-	VALUE getConfValue(byte index);
+	VALUE * getConfValue(byte index);
 	bool isModifiedValue();
 	void resetModifiedValue();
 	unsigned long getAutoResetTime();

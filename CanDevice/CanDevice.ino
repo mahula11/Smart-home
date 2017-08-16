@@ -4,6 +4,17 @@
  Author:	Marek
 */
 
+//#define _VM_AUTO_REPORT_LAST_MS_ 0
+
+#include <SPI.h>
+#include <EEPROMVar.h>
+#include <EEPROMex.h>
+#include <Streaming.h>
+#include <smartHouse.h>
+#include <dataTypes.h>
+#include <CanID.h>
+#include <mcp_can_dfs.h>
+#include <mcp_can.h>
 #include "device.h"
 
 //#define WRITE_MAC_ADDRESS
@@ -35,12 +46,15 @@ Device device;
 
 void watchdogSetup(void);
 
+//#define _VM_AUTO_REPORT_LAST_MS_ 0
+
 void setup() {
 	// immediately disable watchdog timer so set will not get interrupted
 	wdt_disable();
 
 	//Serial.begin(115200);
-	Serial.begin(921600);
+	//Serial.begin(921600);
+	Serial.begin(500000);
 
 	MacID address = eepromConf.getMacAddress();
 	if (address == 65535) {		
@@ -71,7 +85,7 @@ void setup() {
 
 	device.init();
 
-	watchdogSetup();
+	//watchdogSetup();
 }
 
 void loop() {

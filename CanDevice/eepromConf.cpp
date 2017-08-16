@@ -80,7 +80,7 @@ void EepromConf::writeConf(uint8_t confCount, const CONF * pConf) {
 }
 
 //* read whole configuration from eeprom
-const CONF * EepromConf::readConf() {
+CONF * EepromConf::readConf() {
 	//* from eeprom read number of confs
 	uint8_t count = getCountOfConf();
 	//* make new configuration
