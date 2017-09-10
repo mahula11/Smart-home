@@ -182,7 +182,12 @@ void Device::update() {
 
 unsigned long gCounter = 0;
 
-void Device::doReset() {
+void Device::doReset(uint16_t upperBoundOfRandomTime) {
+	if (upperBoundOfRandomTime) {
+		long rand = random(0, upperBoundOfRandomTime);
+		DEBUG(F("Reset will be do in ") << rand << F("ms"));
+		delay(rand);
+	}
 	wdt_enable(WDTO_15MS);
 	delay(1000);
 }

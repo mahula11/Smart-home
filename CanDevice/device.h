@@ -52,7 +52,7 @@ public:
 	void setPins();
 	void checkModifiedData(CDataBase * pConfData, byte index);
 	void checkValueOnPins(CDataBase * pConfData, byte index);
-	static void doReset();
+	static void doReset(uint16_t upperBoundOfRandomTime = 0);
 };
 
 extern EepromConf eepromConf;
