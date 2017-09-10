@@ -20,6 +20,8 @@
 
 class Device {
 private:
+	//volatile static bool s_newModifiedIsSet;
+	static INT8U sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf);
 	static MCP_CAN s_can;     // Set CS to pin 10 in constructor
 	static ArrivedConfiguration * s_arrivedConf;
 	//byte _data[8] = {0};
@@ -50,6 +52,7 @@ public:
 	void setPins();
 	void checkModifiedData(CDataBase * pConfData, byte index);
 	void checkValueOnPins(CDataBase * pConfData, byte index);
+	static void doReset();
 };
 
 extern EepromConf eepromConf;

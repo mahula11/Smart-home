@@ -65,7 +65,9 @@ struct MSG_DATA {
 MSG_DATA gListOfConfs[] = {
 	MSG_DATA(new CConfMsg_switch(1, A4)),
 	MSG_DATA(new CConfMsg_light(1, A2, 2, 5)),
+	MSG_DATA(new CConfMsg_light(1, A5, 2, 6)),
 	MSG_DATA(new CConfMsg_switch(2, 5)),
+	MSG_DATA(new CConfMsg_switch(2, 6)),
 	MSG_DATA(new CConfMsg_light(2, 7, 1, A4)),
 	MSG_DATA(nullptr)
 };
@@ -146,7 +148,7 @@ void loop() {
 				//canID.setMacID(macID);
 				//DEBUG(F("macid:") << macID);
 				//* get number of macIDs in DB
-				byte cont = 1;
+				//byte cont = 1;
 				byte countOfConf = 0;
 				byte ii = 0;
 				MSG_DATA * pData = &gListOfConfs[ii];
@@ -193,55 +195,49 @@ void loop() {
 		int incomingByte = Serial.read();
 		Serial.print(F("I received: "));
 		Serial.println(incomingByte, DEC);
-		if (incomingByte == 'r') {
-			//*posle reset na MacID 1
-			//CanID canID;
-			//canID.setMacID(1);
-			//canID.setFlag_fromConfReset();
-			CConfMsg_reset reset(1);
-			sendMsg(reset);
-		} else if (incomingByte == 't') {
-			//* posle reset na MacID 2
-			//CanID canID;
-			//canID.setMacID(2);
-			//canID.setFlag_fromConfReset();
-			CConfMsg_reset reset(2);
-			sendMsg(reset);
-		} else if (incomingByte == 'a') {
-			//* posle zmenu watchdogu
-			CConfMsg_watchdog wd(1, to8000ms);
-			//CanID canId;
-			//canId.setMacID(1);
-			//canId.setFlag_fromConfSetWatchdog();
-			sendMsg(wd);
-		} else if (incomingByte == 's') {
-			//* posle zmenu watchdogu
-			CConfMsg_watchdog wd(1, to1000ms);
-			//CanID canId;
-			//canId.setMacID(1);
-			//canId.setFlag_fromConfSetWatchdog();
-			sendMsg(wd);
-		} else if (incomingByte == 'p') {
-			//* nastavi auto reset
-			CConfMsg_autoReset ar(1, ar10s);
-			//CanID canId;
-			//canId.setMacID(1);
-			//canId.setFlag_fromConfAutoResetTime();
-			sendMsg(ar);
-		} else if (incomingByte == 'o') {
-			//* nastavi auto reset
-			CConfMsg_autoReset ar(1, arDisable);
-			//CanID canId;
-			//canId.setMacID(1);
-			//canId.setFlag_fromConfAutoResetTime();
-			sendMsg(ar);
-		} else if (incomingByte == 'i') {
-			//* nastavi auto reset
-			CConfMsg_autoReset ar(1, ar1m);
-			//CanID canId;
-			//canId.setMacID(1);
-			//canId.setFlag_fromConfAutoResetTime();
-			sendMsg(ar);
+		switch (incomingByte) {
+			case 'r': {
+				//*posle reset na MacID 1
+				CConfMsg_reset reset(1);
+				sendMsg(reset);
+			}
+				break;
+			case 't': {
+				//* posle reset na MacID 2
+				CConfMsg_reset reset(2);
+				sendMsg(reset);
+				break;
+			}
+			case 'a': {
+				//* posle zmenu watchdogu
+				CConfMsg_watchdog wd(1, to8000ms);
+				sendMsg(wd);
+				break;
+			}
+			case 's': {
+				//* posle zmenu watchdogu
+				CConfMsg_watchdog wd(1, to1000ms);
+				sendMsg(wd);
+				break;
+			}
+			case 'p': {
+				//* nastavi auto reset
+				CConfMsg_autoReset ar(1, ar10s);
+				sendMsg(ar);
+				break;
+			}
+			case 'o': {
+				//* nastavi auto reset
+				CConfMsg_autoReset ar(1, arDisable);
+				sendMsg(ar);
+				break;
+			}
+			case 'i': {
+				//* nastavi auto reset
+				CConfMsg_autoReset ar(1, ar1m);
+				sendMsg(ar);
+				break;
+			}
 		}
 	}
 

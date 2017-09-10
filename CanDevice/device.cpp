@@ -8,6 +8,7 @@ Device * Device::s_instance = nullptr;
 MCP_CAN Device::s_can(10);
 Configuration Device::s_conf;
 ArrivedConfiguration * Device::s_arrivedConf = nullptr;
+//volatile bool Device::s_newModifiedIsSet = false;
 //uint16_t Device::s_deviceAddress = 0;
 //bool Device::s_firstConfMessage = true;
 //byte Device::s_numberOfMsgFromConf = 0;
@@ -73,7 +74,7 @@ void Device::setPins() {
 			//case DEVICE_TYPE_STAIR_CASE_SWITCH:
 			//	break;
 			case DEVICE_TYPE_SWITCH:
-				pinMode(((CConfMsg_switch*)s_conf.getConf(i))->_gpio, INPUT_PULLUP);
+				pinMode(((CConfMsg_switch*)s_conf.getConf(i))->_gpio, INPUT);
 				break;
 		}
 	}
@@ -82,18 +83,16 @@ void Device::setPins() {
 void Device::checkModifiedData(CDataBase * pConfData, byte index) {
 	//* tato modifikacia je nastavena vtedy, ked pridu nove data cez CanBus 
 	//* napr prepnutie vypinaca vysle spravu s novou hodnotou pre ziarovky, ktore pocuvaju pre dany vypinac
-	if (s_conf.isModifiedValue()) {
-		if (s_conf.getConfValue(index)->_modified) {
-			switch (pConfData->getType()) {
-				case DEVICE_TYPE_LIGHT:
-					DEBUG("Set light on PIN:" << ((CConfMsg_light*)pConfData)->_gpio << " value:" << s_conf.getConfValue(index)->_value);
-					digitalWrite(((CConfMsg_light*)pConfData)->_gpio, s_conf.getConfValue(index)->_value);
-					break;
-				//case DEVICE_TYPE_LIGHT_WITH_DIMMER:
-				//	break;
-			}
-			s_conf.getConfValue(index)->_modified = false;
+	if (s_conf.getConfValue(index)->_modified) {
+		switch (pConfData->getType()) {
+			case DEVICE_TYPE_LIGHT:
+				DEBUG("Set light on PIN:" << ((CConfMsg_light*)pConfData)->_gpio << " value:" << s_conf.getConfValue(index)->_value);
+				digitalWrite(((CConfMsg_light*)pConfData)->_gpio, s_conf.getConfValue(index)->_value);
+				break;
+			//case DEVICE_TYPE_LIGHT_WITH_DIMMER:
+			//	break;
 		}
+		s_conf.getConfValue(index)->_modified = false;
 	}
 }
 
@@ -123,7 +122,6 @@ void Device::checkValueOnPins(CDataBase * pConfData, byte index) {
 }
 
 void Device::update() {
-	//DEBUG("------------------------1");
 	//* vynuteny restart
 	//* pokial je millis() mensi ako nastaveny cas (4 hodiny), dovtedy sa watchdog bude resetovat. 
 	//* pokial tento cas presiahne, tak nedovolime reset watchdogu a tym bude vynuteny reset procesoru
@@ -134,28 +132,22 @@ void Device::update() {
 		//* test watchdog timeouts, set millis in delay higher then watchdog timer, processor will be reseting around
 		//DEBUG("po wdt_resete");
 		//delay(2500);
-		//interruptFromCanBus();
 	//* s_arrivedConf is read in interruptFromCanBus
 	//* if arrived configuration is complet, then copy it to eeprom
 	if (s_arrivedConf && s_arrivedConf->isComplet()) {		
 		DEBUG(F("New conf will be processed"));
 		//* zapiseme do eeprom
 		eepromConf.writeConf(s_arrivedConf->getCount(), s_arrivedConf->getConf());
-		//* zapiseme do Configuration
-		s_conf.setConfiguration(eepromConf.readConf());
-		setPins();
-		//* zmazeme _arriveConf
-		delete s_arrivedConf;
-		s_arrivedConf = nullptr;
+		DEBUG(F("Processor reset"));
+		//* do reset and do not have to clean and set up configuration
+		doReset();
+		////* zapiseme do Configuration
+		//s_conf.setConfiguration(eepromConf.readConf());
+		//setPins();
+		////* zmazeme _arriveConf
+		//delete s_arrivedConf;
+		//s_arrivedConf = nullptr;
 	}
-
-	//static uint32_t poc = 0;
-	//if (poc > 20) {
-	//	DEBUG("--------------------" << VAR(poc));
-	//	poc = 0;
-	//} else {
-	//	poc++;
-	//}
 
 	for (int index = 0; index < s_conf.getCount(); index++) {
 		//ConfData * pData = & s_conf.getConf(index)->_confData;
@@ -167,16 +159,39 @@ void Device::update() {
 		//* spracujeme zmenene hodnoty na PINoch
 		checkValueOnPins(pConfData, index);
 	}
-	s_conf.resetModifiedValue();
+
+	if (Serial.available()) {
+		int incomingByte = Serial.read();
+		Serial.print(F("I received: "));
+		Serial.println(incomingByte, DEC);
+		switch (incomingByte) {
+			case 'r': {
+				//* set to zero conter of configurations
+				//* this enforce new conf
+				EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
+				//* do reset
+				doReset();
+				break;
+			}
+			case 't': {
+				break;
+			}
+		}
+	}
 }
 
 unsigned long gCounter = 0;
+
+void Device::doReset() {
+	wdt_enable(WDTO_15MS);
+	delay(1000);
+}
 
 void Device::interruptFromCanBus() {
 	s_can.setMode(MCP_NORMAL);
 	//Device * instance = getInstance();
 	unsigned long counter = gCounter++;
-	DEBUG(F("Start interruptFromCanBus:") << counter << F(",milis:") << millis());
+	DEBUG(F("-----------------------") << endl << F("InterruptFromCanBusStart:") << counter << F(",milis:") << millis());
 	CanID canId;
 	byte len = 0;
 	MsgData rxBuf;
@@ -205,10 +220,7 @@ void Device::interruptFromCanBus() {
 			//* disable wdt_reset
 			if (canId.hasFlag_fromConfReset()) {
 				DEBUG(F("Reset message!"));
-				wdt_enable(WDTO_15MS);
-				delay(10000000);
-				DEBUG(F("Reset message11!"));
-				continue;
+				doReset();
 			}
 
 			if (canId.hasFlag_fromConfAutoResetTime()) {
@@ -250,8 +262,10 @@ void Device::interruptFromCanBus() {
 					((CConfMsg_light*)pData)->_switchMacID == canId.getMacID() && 
 					((CConfMsg_light*)pData)->_switchGPIO == switchData._gpio) 
 				{
+					//s_newModifiedIsSet = true;
 					s_conf.setConfValue(i, switchData._value, true);
-					DEBUG(F("Nastavit hodnotu:") << switchData._value << F(" pre switch:") << i);
+					DEBUG(F("Nastavit hodnotu:") << switchData._value << F(" pre switch z MacID:") << canId.getMacID() 
+						<< F(" a gpio:") << switchData._gpio);
 				}
 			}
 		} else if (canId.hasFlag_askSwitchForValue() && canId.getMacID() == eepromConf.getMacAddress()) {
@@ -265,9 +279,10 @@ void Device::interruptFromCanBus() {
 
 		}
 	}
-	DEBUG(F("End interruptFromCanBus:") << counter 
+	DEBUG(F("InterruptFromCanBusEnd:") << counter 
 		<< F(",milis:") << millis() 
-		<< F(",") << VAR(readMsgStat));
+		<< F(",") << VAR(readMsgStat) << endl 
+		<< F("-----------------------"));
 }
 
 //void Device::interruptFromCanBus() {
@@ -350,45 +365,59 @@ void Device::interruptFromCanBus() {
 //	DEBUG(F("End interruptFromCanBus:") << counter << F(",milis:") << millis());
 //}
 
+INT8U Device::sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf) {
+	INT8U res;
+
+	s_can.setMsg(id, 0, ext, len, buf);
+	res = s_can.sendMsg();
+
+	return res;
+}
+
 void Device::sendMsg(CDataBase & cdb) {
 	byte data[8];
 	cdb.serialize(data);
 	uint8_t ret = 0;
+	static uint32_t counter = 0;
 	
 	s_can.setMode(MCP_NORMAL);
 	DEBUG(F("Sending msg to CanBus:\n CanID:") << cdb._destCanID._canID
 		<< F(",MacID:") << cdb._destCanID.getMacID()
 		<< F(",\n deviceType:") << cdb.getType());
-	ret = s_can.sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
+	//ret = s_can.sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
+	ret = sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
 #ifdef DEBUG_BUILD
 	if (ret == CAN_OK) {
-		DEBUG(F("Msg was sent to CanBus"));
+		DEBUG(F("Msg was sent to CanBus:") << ++counter);
 	} else {
 		DEBUG(F("Failure when send to CanBus:\n CanID:") << cdb._destCanID._canID << F(",error:") << ret);
 	}
 #endif
 
-	//static uint16_t tmp = 0;
-	if (1) {
-		s_can.setMode(MCP_LOOPBACK);
-		//s_can.setMode(MCP_NORMAL);
-		DEBUG(F("Sending msg to loopback:\n CanID:") << cdb._destCanID._canID
-			<< F(",MacID:") << cdb._destCanID.getMacID()
-			<< F(",\n deviceType:") << cdb.getType());
-		DEBUG(F("---------------------send1"));
-		ret = s_can.sendMsgBuf(cdb._destCanID._canID, cdb.getSize(), data);
-		DEBUG(F("---------------------send2"));
-#ifdef DEBUG_BUILD
-		if (ret == CAN_OK) {
-			DEBUG(F("Msg was sent to loopback"));
-		} else {
-			DEBUG(F("Failure when send over loopback:\n CanID:") << cdb._destCanID._canID << F(",error:") << ret);
-		}
-#endif
-		//DEBUG(F("Set back normal mode and send again message to CanBus"));
-		//s_can.setMode(MCP_NORMAL);
-	}
+
+//	if (1) {
+//		s_can.setMode(MCP_LOOPBACK);
+//		//s_can.setMode(MCP_NORMAL);
+//		DEBUG(F("Sending msg to loopback:\n CanID:") << cdb._destCanID._canID
+//			<< F(",MacID:") << cdb._destCanID.getMacID()
+//			<< F(",\n deviceType:") << cdb.getType());
+//		DEBUG(F("---------------------send1"));
+//		//ret = s_can.sendMsgBuf(cdb._destCanID._canID, cdb.getSize(), data);
+//		ret = sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
+//		DEBUG(F("---------------------send2"));
+//#ifdef DEBUG_BUILD
+//		if (ret == CAN_OK) {
+//			DEBUG(F("Msg was sent to loopback"));
+//		} else {
+//			DEBUG(F("Failure when send over loopback:\n CanID:") << cdb._destCanID._canID << F(",error:") << ret);
+//		}
+//#endif
+//		//DEBUG(F("Set back normal mode and send again message to CanBus"));
+//		//s_can.setMode(MCP_NORMAL);
+//	}
+//	s_can.setMode(MCP_NORMAL);
 }
+
 
 //void Device::sendRequest_askSwitchForValue(MacID macId, uint8_t pin) {
 //	DEBUG(F("Ask switch for value, macId:") << macId << F(", pin ") << pin);

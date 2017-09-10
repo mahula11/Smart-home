@@ -64,25 +64,12 @@ void setup() {
 			delay(15000);
 		}
 	}
-	
-	
-	bool needNewConf = false;
-	//* UNCOMMENT FOR GETTING NEW CONF
-	//needNewConf = true;
-
 
 	DEBUG(F("--CanDevice started!--"));
 	DEBUG(F("MacID:") << address);
 	DEBUG(F("WATCHDOG_TIMEOUT:") << EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT));
 	DEBUG(F("AutoResetTime:") << EEPROM.readByte(EEPROM_ADDRESS__AUTO_RESET_TIME));
-	DEBUG(F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT) 
-							 << (needNewConf ? F(", but counter is reseted!") : F("")));
-	if (needNewConf) {
-		//* set to zero conter of configurations
-		//* this enforce new conf
-		EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
-	}
-
+	DEBUG(F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT));
 	device.init();
 
 	//watchdogSetup();
@@ -90,19 +77,6 @@ void setup() {
 
 void loop() {
 	device.update();
-	
-	//if (Serial.available()) {
-	//	int incomingByte = Serial.read();
-	//	Serial.print(F("I received: "));
-	//	Serial.println(incomingByte, DEC);
-	//	if (incomingByte == 'r') {
-	//		//sendRequestForConfiguration();
-	//	} else if(incomingByte == 'a') {
-	//		//printStruct();
-	//	}
-	//}
-	
-	//delay(10);   // send data per 100ms
 }
 
 void watchdogSetup() {

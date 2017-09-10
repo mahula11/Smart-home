@@ -2,7 +2,7 @@
 
 
 Configuration::Configuration() {
-	_modified = false;
+	//_modified = false;
 	_pConf = nullptr;
 	_pValues = nullptr;
 }
@@ -45,20 +45,20 @@ void Configuration::setConfValue(byte index, byte value, bool modifyFlag) {
 	//if (index > 7)
 	_pValues[index]._value = value;
 	_pValues[index]._modified = modifyFlag;
-	_modified = true;
+	//_modified = true;
 }
 
 VALUE * Configuration::getConfValue(byte index) {
 	return &_pValues[index];
 }
 
-bool Configuration::isModifiedValue() {
-	return _modified;
-}
-
-void Configuration::resetModifiedValue() {
-	_modified = false;
-}
+//bool Configuration::isModifiedValue() {
+//	return _modified;
+//}
+//
+//void Configuration::resetModifiedValue() {
+//	_modified = false;
+//}
 
 unsigned long Configuration::getAutoResetTime() {
 	

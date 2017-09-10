@@ -6,14 +6,14 @@
 struct VALUE {
 	byte _value;
 	bool _modified;
-	VALUE() : _value(0), _modified(false) {}
+	VALUE() : _value(1), _modified(false) {}
 };
 
 class Configuration {
 private:
 	CONF * _pConf;
 	VALUE * _pValues;
-	bool _modified;
+	//bool _modified;
 
 	MacID _macID;
 	uint8_t _watchdogTimeout;
