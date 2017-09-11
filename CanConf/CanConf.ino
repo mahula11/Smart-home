@@ -82,19 +82,23 @@ MCP_CAN CAN0(10);    // Set CS to pin 10
 
 
 void setup() {
-	Serial.begin(115200);
+	Serial.begin(500000);
 
+	setCanBus();
+	
+	pinMode(CAN0_INT, INPUT);                            // Configuring pin for /INT input
+
+	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
+}
+
+void setCanBus() {
 	// Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
 	if (CAN0.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK) {
 		DEBUG(F("MCP2515 Initialized Successfully!"));
 	} else {
 		DEBUG(F("Error Initializing MCP2515..."));
 	}
-
 	CAN0.setMode(MCP_NORMAL);                     // Set operation mode to normal so the MCP2515 sends acks to received data.
-	pinMode(CAN0_INT, INPUT);                            // Configuring pin for /INT input
-
-	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
 }
 
 void interruptFromCanBus() {
@@ -238,10 +242,62 @@ void loop() {
 				sendMsg(ar);
 				break;
 			}
+			case 'q': {
+				getAvailableSpeeds();
+				break;
+			}
 		}
 	}
 
 	delay(100);
+}
+
+const char* canBusSpeeds[] = {
+	"CAN_4K096BPS",
+	"CAN_5KBPS",
+	"CAN_10KBPS",
+	"CAN_20KBPS",
+	"CAN_31K25BPS",
+	"CAN_33K3BPS",
+	"CAN_40KBPS",
+	"CAN_50KBPS",
+	"CAN_80KBPS",
+	"CAN_100KBPS",
+	"CAN_125KBPS",
+	"CAN_200KBPS",
+	"CAN_250KBPS",
+	"CAN_500KBPS",
+	"CAN_1000KBPS"
+};
+
+
+void getAvailableSpeeds() {
+	INT8U ret;
+	byte data[8];
+	CConfMsg_ping ping(4);
+	
+	DEBUG(F("S-------------------------"));
+	for (int i = 0; i < 15; i++) {
+		//switch (i) {
+		//	case 0:
+		//		continue;
+		//}
+		if (CAN0.begin(MCP_ANY, i, MCP_8MHZ) == CAN_OK) {		
+		} else {
+			DEBUG(F("Error Initializing MCP2515...") << VAR(i));
+		}	
+		CAN0.setMode(MCP_NORMAL);
+		//sendMsg(ping);
+		ping.serialize(data);
+		ret = CAN0.sendMsgBuf(ping._destCanID._canID, 1, ping.getSize(), data);
+		if (ret == CAN_OK) {
+			DEBUG(F("Speed ") << canBusSpeeds[i] << ": 1");
+		} else {
+			DEBUG(F("Speed ") << canBusSpeeds[i] << ": 0");
+		}
+	}
+	DEBUG(F("E-------------------------"));
+	setCanBus();
 }
 
 //INT32U resetBit(INT32U value, byte bit) {

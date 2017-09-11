@@ -205,7 +205,8 @@ void Device::interruptFromCanBus() {
 		DEBUG(F("Received:\n CanID:") << canId._canID << F(",MacID:") << canId.getMacID()
 			<< F(",\n fromConf:") << canId.hasFlag_fromConfiguration()
 			<< F(",\n fromSwitch:") << canId.hasFlag_fromSwitch()
-			<< F(",\n askSwitchForVal:") << canId.hasFlag_askSwitchForValue());
+			<< F(",\n askSwitchForVal:") << canId.hasFlag_askSwitchForValue()
+			<< F(",\n ping:") << canId.hasFlag_ping());
 
 		if (canId.hasFlag_fromConfiguration() && canId.getMacID() == eepromConf.getMacAddress()) {
 			//* messages from configuration server
