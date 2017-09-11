@@ -43,6 +43,8 @@ private:
 	static Device * getInstance() {
 		return s_instance;
 	}
+
+	void iniCanBus(uint8_t canBusSpeed);
 public:
 	Device();
 	~Device();

@@ -22,18 +22,26 @@ Device::Device() {
 Device::~Device() {
 }
 
+void Device::iniCanBus(uint8_t canBusSpeed) {
+	// Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s 
+	// and the masks and filters disabled.
+	if (s_can.begin(MCP_ANY, canBusSpeed, MCP_8MHZ) == CAN_OK) {
+		DEBUG(F("MCP2515 Initialized Successfully:") << canBusSpeeds[canBusSpeed]);
+	} else {
+		DEBUG(F("MCP2515 Initializing Error"));
+	}
+	// Change to normal mode to allow messages to be transmitted
+	s_can.setMode(MCP_NORMAL);
+}
+
 void Device::init() {
 	//_eepromConf = eepromConf;
 	s_arrivedConf = nullptr;
 	//s_deviceAddress = _eepromConf.getMacAddress();
-	// Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
-	if (s_can.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK) {
-		DEBUG(F("MCP2515 Initialized Successfully"));
-	} else {
-		DEBUG(F("MCP2515 Initializing Error"));
-	}
+	
+	//* inicialize canBus
+	iniCanBus(CAN_1000KBPS);
 
-	s_can.setMode(MCP_NORMAL);   // Change to normal mode to allow messages to be transmitted
 	pinMode(CAN0_INT, INPUT);   // Configuring pin for /INT input
 
 	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
@@ -45,6 +53,12 @@ void Device::init() {
 		//* nacitaj conf
 		DEBUG(F("Set conf from eeprom."));
 		s_conf.setConfiguration(eepromConf.readConf());
+		
+		s_conf.getMacAddress() vracia nulu, zistit preco???
+		CTraficMsg_ImUp imUp((uint16_t)s_conf.getMacAddress());
+		sendMsg(imUp);
+
+
 		setPins();
 	} else {
 		//* pocet je 0, takze ziadnu konfiguraciu v eeprom nemame, treba poziadat o novu.
@@ -173,7 +187,19 @@ void Device::update() {
 				doReset();
 				break;
 			}
-			case 't': {
+			case 'g': {
+				//* inicialize canBus
+				iniCanBus(CAN_500KBPS);
+				break;
+			}
+			case 'h': {
+				//* inicialize canBus
+				iniCanBus(CAN_100KBPS);
+				break;
+			}
+			case 'j': {
+				//* inicialize canBus
+				iniCanBus(CAN_1000KBPS);
 				break;
 			}
 		}
@@ -206,7 +232,8 @@ void Device::interruptFromCanBus() {
 			<< F(",\n fromConf:") << canId.hasFlag_fromConfiguration()
 			<< F(",\n fromSwitch:") << canId.hasFlag_fromSwitch()
 			<< F(",\n askSwitchForVal:") << canId.hasFlag_askSwitchForValue()
-			<< F(",\n ping:") << canId.hasFlag_ping());
+			<< F(",\n ping:") << canId.hasFlag_ping() 
+			<< F(",\n ImUp:") << canId.hasFlag_ImUp());
 
 		if (canId.hasFlag_fromConfiguration() && canId.getMacID() == eepromConf.getMacAddress()) {
 			//* messages from configuration server

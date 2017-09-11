@@ -252,36 +252,13 @@ void loop() {
 	delay(100);
 }
 
-const char* canBusSpeeds[] = {
-	"CAN_4K096BPS",
-	"CAN_5KBPS",
-	"CAN_10KBPS",
-	"CAN_20KBPS",
-	"CAN_31K25BPS",
-	"CAN_33K3BPS",
-	"CAN_40KBPS",
-	"CAN_50KBPS",
-	"CAN_80KBPS",
-	"CAN_100KBPS",
-	"CAN_125KBPS",
-	"CAN_200KBPS",
-	"CAN_250KBPS",
-	"CAN_500KBPS",
-	"CAN_1000KBPS"
-};
-
-
 void getAvailableSpeeds() {
 	INT8U ret;
 	byte data[8];
-	CConfMsg_ping ping(4);
+	CTraficMsg_ping ping(4);
 	
 	DEBUG(F("S-------------------------"));
 	for (int i = 0; i < 15; i++) {
-		//switch (i) {
-		//	case 0:
-		//		continue;
-		//}
 		if (CAN0.begin(MCP_ANY, i, MCP_8MHZ) == CAN_OK) {		
 		} else {
 			DEBUG(F("Error Initializing MCP2515...") << VAR(i));
