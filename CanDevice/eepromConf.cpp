@@ -14,6 +14,14 @@ uint16_t EepromConf::getMacAddress() {
 	return EEPROM.readInt(EEPROM_ADDRESS__MAC_ADDRESS);
 }
 
+uint8_t EepromConf::getCanBusSpeed() {
+	return EEPROM.readByte(EEPROM_ADDRESS__CAN_BUS_SPEED);
+}
+
+void EepromConf::setCanBusSpeed(uint8_t speed) {
+	EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, speed);
+}
+
 uint8_t EepromConf::getWatchdogTimeout() {
 	return EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT);
 }

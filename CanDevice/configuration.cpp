@@ -15,10 +15,16 @@ byte Configuration::getCount() {
 	return _confCount;
 }
 
-void Configuration::setConfigurationStatic(uint8_t confCount, uint8_t watchdogTimeout, uint8_t autoResetTime) {
+void Configuration::setConfigurationStatic(uint8_t confCount, 
+											uint8_t watchdogTimeout, 
+											uint8_t autoResetTime, 
+											MacID macID,
+											uint8_t canBusSpeed) {
 	_autoResetTime = autoResetTime;
 	_confCount = confCount;
 	_watchdogTimeout = watchdogTimeout;
+	_macID = macID;
+	_canBusSpeed = canBusSpeed;
 }
 
 void Configuration::setConfiguration(CONF * pConf) {
@@ -39,6 +45,14 @@ CDataBase * Configuration::getConf(byte index) {
 //* vrati adresu zariadenia
 MacID Configuration::getMacAddress() {
 	return _macID;
+}
+
+uint8_t Configuration::getCanBusSpeed() {
+	return _canBusSpeed;
+}
+
+void Configuration::setCanBusSpeed(uint8_t speed) {
+	_canBusSpeed = speed;
 }
 
 void Configuration::setConfValue(byte index, byte value, bool modifyFlag) {

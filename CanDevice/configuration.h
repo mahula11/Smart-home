@@ -19,12 +19,13 @@ private:
 	uint8_t _watchdogTimeout;
 	uint8_t _autoResetTime;
 	uint8_t _confCount;
+	uint8_t _canBusSpeed;
 
 public:
 	Configuration();
 	~Configuration();
 
-	void setConfigurationStatic(uint8_t confCount, uint8_t watchdogTimeout, uint8_t autoResetTime);
+	void setConfigurationStatic(uint8_t confCount, uint8_t watchdogTimeout, uint8_t autoResetTime, MacID macID, uint8_t canBusSpeed);
 
 	byte getCount();
 	uint16_t getMacAddress();
@@ -32,9 +33,11 @@ public:
 	CDataBase * getConf(byte index);
 	void setConfValue(byte index, byte value, bool modifyFlag);
 	VALUE * getConfValue(byte index);
-	bool isModifiedValue();
-	void resetModifiedValue();
+	//bool isModifiedValue();
+	//void resetModifiedValue();
 	unsigned long getAutoResetTime();
 	void setAutoResetTime(uint8_t val);
+	void setCanBusSpeed(uint8_t speed);
+	uint8_t getCanBusSpeed();
 };
 
