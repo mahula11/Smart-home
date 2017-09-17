@@ -87,16 +87,79 @@ void Device::checkValueOnPins(CDataBase * pConfData, byte index) {
 	}
 }
 
-void Device::iniCanBus(uint8_t canBusSpeed) {
-	// Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s 
-	// and the masks and filters disabled.
-	if (s_can.begin(MCP_ANY, canBusSpeed, MCP_8MHZ) == CAN_OK) {
-		DEBUG(F("MCP2515 Success:") << canBusSpeeds[canBusSpeed]);
-	} else {
-		DEBUG(F("MCP2515 Fail"));
+void Device::detectCanBusSpeed() {
+	int8_t iSpeed;
+	CTrafficMsg_ping ping(s_conf.getMacAddress());
+	DEBUG(F("Going to detect canbus speed"));
+
+	//* looking for other devices through CAN BUS speed
+	//* sent message must be received by someone
+	while (1) {
+		for (iSpeed = 0; iSpeed < CANBUS__COUNT_OF_SPEEDS; iSpeed++) {
+			//* inicialize CAN BUS
+			if (s_can.begin(MCP_ANY, iSpeed, MCP_8MHZ) != CAN_OK) {
+				//* some speeds could not be available
+				DEBUG(F("Error Initializing MCP2515...") << VAR(iSpeed));
+				continue;
+			}
+			s_can.setMode(MCP_NORMAL);
+
+			//* try ping message
+			if (sendMsg(ping) == CAN_OK) {
+				DEBUG(F("Speed ") << canBusSpeeds[iSpeed] << ": 1");
+				//* someoone received message, so we found speed
+				break;
+			} else {
+				DEBUG(F("Speed ") << canBusSpeeds[iSpeed] << ": 0");
+			}
+			delay(50);
+		}
+		if (iSpeed != CANBUS__COUNT_OF_SPEEDS) {
+			DEBUG(F("Speed was founded:") << canBusSpeeds[iSpeed]);
+			//* speed was founded
+			EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, iSpeed);
+			doReset();
+		}
+		//* check for speeds every second
+		delay(1000);
 	}
-	// Change to normal mode to allow messages to be transmitted
-	s_can.setMode(MCP_NORMAL);
+}
+
+void Device::iniCanBus(uint8_t canBusSpeed) {
+	if (canBusSpeed == CANBUS__DETECT_SPEED) {
+		//* going to detect canbus speed
+		detectCanBusSpeed();
+	} else {
+		if (s_can.begin(MCP_ANY, canBusSpeed, MCP_8MHZ) == CAN_OK) {
+			DEBUG(F("MCP2515 Success:") << canBusSpeeds[canBusSpeed]);
+		} else {
+			DEBUG(F("MCP2515 Fail"));
+		}
+		// Change to normal mode to allow messages to be transmitted
+		s_can.setMode(MCP_NORMAL);
+
+		//* send message Im Up
+		CTrafficMsg_ImUp msgImUp(s_conf.getMacAddress());
+		if (sendMsg(msgImUp) == CAN_FAIL) {
+			//* if message no one received, then maybe this device is first after restart of all devices, 
+			//* so now it will be sending every second ping message
+			//* after 6 times (6 seconds) going to detect CAN BUS speed, maybe other devices are on different speed
+			uint8_t iPing;
+			CTrafficMsg_ping msgPing(s_conf.getMacAddress());
+			DEBUG(F("Trying to ping some device(6x)"));
+			for (iPing = 0; iPing < 6; iPing++) {
+				//* delay 1 second for repeating ping
+				delay(1000);
+				if (sendMsg(msgPing) == CAN_OK) {
+					break;
+				}
+			}
+			if (iPing == 6) {
+				//* going to detect canbus speed
+				detectCanBusSpeed();
+			}
+		}
+	}
 }
 
 void Device::init() {
@@ -114,6 +177,7 @@ void Device::init() {
 	iniCanBus(s_conf.getCanBusSpeed());
 
 	pinMode(CAN0_INT, INPUT);   // Configuring pin for /INT input
+	randomSeed(analogRead(0));
 
 	attachInterrupt(digitalPinToInterrupt(CAN0_INT), interruptFromCanBus, FALLING);
 
@@ -122,10 +186,9 @@ void Device::init() {
 		//* nacitaj conf
 		DEBUG(F("Set conf from eeprom.") << s_conf.getMacAddress());
 		s_conf.setConfiguration(eepromConf.readConf());
-
-		//s_conf.getMacAddress() vracia nulu, zistit preco???
-		CTraficMsg_ImUp imUpMsg((uint16_t)s_conf.getMacAddress());
-		sendMsg(imUpMsg);
+		
+		//CTrafficMsg_ImUp imUpMsg(s_conf.getMacAddress());
+		//sendMsg(imUpMsg);
 
 
 		setPins();
@@ -156,7 +219,7 @@ void Device::update() {
 		DEBUG(F("New conf will be processed"));
 		//* zapiseme do eeprom
 		eepromConf.writeConf(s_arrivedConf->getCount(), s_arrivedConf->getConf());
-		DEBUG(F("Processor reset"));
+		//DEBUG(F("Processor reset"));
 		//* do reset and do not have to clean and set up configuration
 		doReset();
 		////* zapiseme do Configuration
@@ -170,14 +233,14 @@ void Device::update() {
 	for (int index = 0; index < s_conf.getCount(); index++) {
 		//ConfData * pData = & s_conf.getConf(index)->_confData;
 		CDataBase * pConfData = s_conf.getConf(index);
-		
-		//* pozrieme, ci neprisli nove data
+		//* have a look for new arrived data from configuration
 		checkModifiedData(pConfData, index);
-
-		//* spracujeme zmenene hodnoty na PINoch
+		//* process changed values from GPIO
 		checkValueOnPins(pConfData, index);
 	}
 
+#ifdef DEBUG_BUILD
+	//* those is only for testing
 	if (Serial.available()) {
 		int incomingByte = Serial.read();
 		Serial.print(F("I received: "));
@@ -208,25 +271,36 @@ void Device::update() {
 			}
 		}
 	}
+#endif
 }
 
-unsigned long gCounter = 0;
-
 void Device::doReset(uint16_t upperBoundOfRandomTime) {
-	if (upperBoundOfRandomTime) {
+	DEBUG(F("Processor reset"));
+	if (upperBoundOfRandomTime) {	
 		long rand = random(0, upperBoundOfRandomTime);
 		DEBUG(F("Reset in ") << rand << F("ms"));
 		delay(rand);
 	}
+	Serial.flush();
 	wdt_enable(WDTO_15MS);
-	delay(1000);
+	delay(100000000);
+	//delayMicroseconds(10000);
 }
 
+#ifdef DEBUG_BUILD
+	unsigned long gCounter = 0;
+#endif
+
 void Device::interruptFromCanBus() {
-	s_can.setMode(MCP_NORMAL);
+	//s_can.setMode(MCP_NORMAL);
 	//Device * instance = getInstance();
-	unsigned long counter = gCounter++;
-	DEBUG(F("-----------------------") << endl << F("InterruptFromCanBusStart:") << counter << F(",milis:") << millis());
+	#ifdef DEBUG_BUILD
+		unsigned long counter = gCounter++;
+	#endif
+	DEBUG(F("-----------------------") << endl 
+		<< F("IntFromCanBusStart:") << counter 
+		<< F(",MacID:") << s_conf.getMacAddress() 
+		<< F(",milis:") << millis());
 	CanID canId;
 	byte len = 0;
 	MsgData rxBuf;
@@ -239,12 +313,21 @@ void Device::interruptFromCanBus() {
 			<< F(",\n ping:") << canId.hasFlag_ping() 
 			<< F(",\n ImUp:") << canId.hasFlag_ImUp());
 
+		if (canId.hasFlag_fromConfiguration() && canId.getMacID() == CANBUS__MESSAGE_TO_ALL) {
+			//* set new CAN BUS speed
+			if (canId.hasFlag_fromConfSetCanBusSpeed()) {
+				DEBUG(F("Set CAN BUS speed to:") << rxBuf[0]);
+				EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, (uint8_t)rxBuf[0]);
+				doReset(1000);
+			}
+		}
+
 		if (canId.hasFlag_fromConfiguration() && canId.getMacID() == s_conf.getMacAddress()) {
 			//* messages from configuration server
 			if (s_arrivedConf == nullptr) {
 				s_arrivedConf = new ArrivedConfiguration();
 			}
-
+			
 			//* sprava moze prist z FE, bez vyziadania
 			//* nastavime timeout pre watchdog
 			if (canId.hasFlag_fromConfSetWatchdog()) {
@@ -316,52 +399,66 @@ void Device::interruptFromCanBus() {
 
 		}
 	}
-	DEBUG(F("InterruptFromCanBusEnd:") << counter 
+	DEBUG(F("IntFromCanBusEnd:") << counter 
 		<< F(",milis:") << millis() 
 		<< F(",") << VAR(readMsgStat) << endl 
 		<< F("-----------------------"));
 }
 
-INT8U Device::sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf) {
-	INT8U res;
+//INT8U Device::sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf) {
+//	INT8U res;
+//
+//	s_can.setMsg(id, 0, ext, len, buf);
+//	res = s_can.sendMsg();
+//
+//	return res;
+//}
 
-	s_can.setMsg(id, 0, ext, len, buf);
-	res = s_can.sendMsg();
-
-	return res;
-}
-
-void Device::sendMsg(CDataBase & cdb) {
+uint8_t Device::sendMsg(CDataBase & cdb) {
 	byte data[8];
 	cdb.serialize(data);
-	uint8_t ret = 0;
+	uint8_t ret;
+	#ifdef DEBUG_BUILD
 	static uint32_t counter = 0;
+	#endif
 	
-	s_can.setMode(MCP_NORMAL);
+	//if (s_can.setMode(MCP_NORMAL) == MCP2515_OK) {
+	//	DEBUG(F("1.Set mode MCP_NORMAL succesful"));
+	//} else {
+	//	DEBUG(F("1.Set mode MCP_NORMAL fail"));
+	//}
 	DEBUG(F("Sending msg to CanBus:\n CanID:") << cdb._destCanID._canID
 		<< F(",MacID:") << cdb._destCanID.getMacID()
 		<< F(",\n deviceType:") << cdb.getType());
-	//ret = s_can.sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
-	ret = sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
-#ifdef DEBUG_BUILD
+	//ret = sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
+	s_can.setMsg(cdb._destCanID._canID, 0, 1, cdb.getSize(), data);
+	ret = s_can.sendMsg();
 	if (ret == CAN_OK) {
 		DEBUG(F("Msg was sent to CanBus:") << ++counter);
+		return CAN_OK;
 	} else {
 		DEBUG(F("Failure when send to CanBus:\n CanID:") << cdb._destCanID._canID << F(",error:") << ret);
+		return CAN_FAIL;
 	}
-#endif
 
 
 //	if (1) {
-//		s_can.setMode(MCP_LOOPBACK);
+//		//s_can.begin();
+//		//delay(1000);
+//		//s_can.mcp2515_reset();
+//		if (s_can.setMode(MCP_LOOPBACK) == MCP2515_OK) {
+//			DEBUG(F("2.Set mode MCP_LOOPBACK succesful"));
+//		} else {
+//			DEBUG(F("2.Set mode MCP_LOOPBACK fail"));
+//		}
 //		//s_can.setMode(MCP_NORMAL);
 //		DEBUG(F("Sending msg to loopback:\n CanID:") << cdb._destCanID._canID
 //			<< F(",MacID:") << cdb._destCanID.getMacID()
 //			<< F(",\n deviceType:") << cdb.getType());
-//		DEBUG(F("---------------------send1"));
+//		//DEBUG(F("---------------------send1"));
 //		//ret = s_can.sendMsgBuf(cdb._destCanID._canID, cdb.getSize(), data);
 //		ret = sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
-//		DEBUG(F("---------------------send2"));
+//		//DEBUG(F("---------------------send2"));
 //#ifdef DEBUG_BUILD
 //		if (ret == CAN_OK) {
 //			DEBUG(F("Msg was sent to loopback"));
@@ -372,5 +469,11 @@ void Device::sendMsg(CDataBase & cdb) {
 //		//DEBUG(F("Set back normal mode and send again message to CanBus"));
 //		//s_can.setMode(MCP_NORMAL);
 //	}
-//	s_can.setMode(MCP_NORMAL);
+//	//delay(1000);
+//	//s_can.mcp2515_reset();
+//	if (s_can.setMode(MCP_NORMAL) == MCP2515_OK) {
+//		DEBUG(F("3.Set mode MCP_NORMAL succesful"));
+//	} else {
+//		DEBUG(F("3.Set mode MCP_NORMAL fail"));
+//	}
 }

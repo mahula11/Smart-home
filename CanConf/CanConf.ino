@@ -246,6 +246,16 @@ void loop() {
 				getAvailableSpeeds();
 				break;
 			}
+			case 'm': {
+				CConfMsg_setCanBusSpeed canBusSpeed(CANBUS__MESSAGE_TO_ALL, CAN_125KBPS);
+				sendMsg(canBusSpeed);
+				break;
+			}
+			case 'n': {
+				CConfMsg_setCanBusSpeed canBusSpeed(CANBUS__MESSAGE_TO_ALL, CAN_1000KBPS);
+				sendMsg(canBusSpeed);
+				break;
+			}
 		}
 	}
 
@@ -255,7 +265,7 @@ void loop() {
 void getAvailableSpeeds() {
 	INT8U ret;
 	byte data[8];
-	CTraficMsg_ping ping(4);
+	CTrafficMsg_ping ping(4);
 	
 	DEBUG(F("S-------------------------"));
 	for (int i = 0; i < 15; i++) {

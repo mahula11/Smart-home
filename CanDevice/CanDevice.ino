@@ -17,23 +17,22 @@
 #include <mcp_can.h>
 #include "device.h"
 
-#define WRITE_MAC_ADDRESS
-#ifdef WRITE_MAC_ADDRESS
+//* define unique MAC address for each canDevice
+#define WRITE_MAC_ADDRESS 0   //* <- put mac address
+
+#if WRITE_MAC_ADDRESS > 0
 
 void setup() {
 	Serial.begin(500000);
-	//* write unique MAC address to EEPROM
-	uint16_t address = 2;
 	Serial << F("MAC_ID:") << EEPROM.readInt(EEPROM_ADDRESS__MAC_ADDRESS) << endl << 
 		F("WatchdogTimeout:") << EEPROM.readByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT) << endl <<
 		F("AutoResetTime:") << EEPROM.readByte(EEPROM_ADDRESS__AUTO_RESET_TIME) << endl <<
 		F("CanBusSpeed:") << EEPROM.readByte(EEPROM_ADDRESS__CAN_BUS_SPEED) << endl <<
 		F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT) << endl;
-	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, address);
+	EEPROM.writeInt(EEPROM_ADDRESS__MAC_ADDRESS, WRITE_MAC_ADDRESS);
 	EEPROM.writeByte(EEPROM_ADDRESS__WATCHDOG_TIMEOUT, WATCHDOG_TIMEOUT::to2000ms);
 	EEPROM.writeByte(EEPROM_ADDRESS__AUTO_RESET_TIME, AUTO_RESET_TIMES::arDisable);
-	sem dat hodnotu autospeed, rychlost sa bude zistovat
-	EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, );
+	EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, CANBUS__DETECT_SPEED);
 	EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
 }
 

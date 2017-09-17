@@ -18,10 +18,12 @@
 
 #define CAN0_INT 2   // Set INT to pin 2
 
+#define CANBUS__DETECT_SPEED 255
+
 class Device {
 private:
 	//volatile static bool s_newModifiedIsSet;
-	static INT8U sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf);
+	//static INT8U sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf);
 	static MCP_CAN s_can;     // Set CS to pin 10 in constructor
 	static ArrivedConfiguration * s_arrivedConf;
 	//byte _data[8] = {0};
@@ -34,7 +36,7 @@ private:
 	//static byte s_numberOfArrivedMsg;
 
 	static void interruptFromCanBus();
-	static void sendMsg(CDataBase & cdb);
+	static uint8_t sendMsg(CDataBase & cdb);
 	//void sendRequest_forConfiguration();
 	//void sendRequest_askSwitchForValue(MacID macId, uint8_t pin);
 	//void static sendRequest_fromSwitch(byte gpio, byte pinValue);
@@ -45,6 +47,7 @@ private:
 	}
 
 	void iniCanBus(uint8_t canBusSpeed);
+	void detectCanBusSpeed();
 public:
 	Device();
 	~Device();
