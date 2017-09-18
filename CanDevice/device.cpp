@@ -7,6 +7,7 @@ Device * Device::s_instance = nullptr;
 //ArrivedConfiguration Device::s_arrivedConf;
 MCP_CAN Device::s_can(10);
 Configuration Device::s_conf;
+SimpleFIFO<ST_CANBUS_RECEIVED_DATA, 10> Device::s_receivedCanBusData;
 ArrivedConfiguration * Device::s_arrivedConf = nullptr;
 //volatile bool Device::s_newModifiedIsSet = false;
 //uint16_t Device::s_deviceAddress = 0;
@@ -163,9 +164,17 @@ void Device::iniCanBus(uint8_t canBusSpeed) {
 }
 
 void Device::init() {
-	//_eepromConf = eepromConf;
 	s_arrivedConf = nullptr;
-	//s_deviceAddress = _eepromConf.getMacAddress();
+
+	
+
+	//aa a1;
+	//a1.canid = 22; 
+	//int a;
+	//a = 1;
+
+	//SimpleFIFO<aa, 10> sFIFO;
+	//sFIFO.push(a1);
 
 	s_conf.setConfigurationStatic(eepromConf.getCountOfConf(),
 		eepromConf.getWatchdogTimeout(),
@@ -292,6 +301,23 @@ void Device::doReset(uint16_t upperBoundOfRandomTime) {
 #endif
 
 void Device::interruptFromCanBus() {
+	byte len;
+	ST_CANBUS_RECEIVED_DATA stData;
+	CanID canID;
+	while (s_can.readMsgBuf(&stData.canID, &len, stData.data) == CAN_OK) {
+		canID._canID = stData.canID;
+		if (canID.getMacID() == s_conf.getMacAddress() || canID.getMacID() == CANBUS__MESSAGE_TO_ALL) {
+			//* push to the queue only messages for relevant MacID or messages to all
+			s_receivedCanBusData.push(stData);
+		}		
+	}
+}
+
+void Device::test() {
+	//ST_CANBUS_RECEIVED_DATA stData;
+	//s_receivedCanBusData.push(stData);
+	//* ----------------------------
+
 	//s_can.setMode(MCP_NORMAL);
 	//Device * instance = getInstance();
 	#ifdef DEBUG_BUILD

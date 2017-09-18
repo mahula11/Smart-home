@@ -12,6 +12,7 @@
 #include "configuration.h"
 #include "arrivedConfiguration.h"
 #include "eepromConf.h"
+#include <SimpleFIFO.h>
 
 #define LOG_DEBUG(str) \
 		Serial << str;
@@ -20,8 +21,16 @@
 
 #define CANBUS__DETECT_SPEED 255
 
+struct ST_CANBUS_RECEIVED_DATA {
+	unsigned long canID;
+	MsgData data;
+};
+
 class Device {
 private:
+	void test();
+	static SimpleFIFO<ST_CANBUS_RECEIVED_DATA, 10> s_receivedCanBusData;
+
 	//volatile static bool s_newModifiedIsSet;
 	//static INT8U sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf);
 	static MCP_CAN s_can;     // Set CS to pin 10 in constructor
