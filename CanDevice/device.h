@@ -19,17 +19,21 @@
 
 #define CAN0_INT 2   // Set INT to pin 2
 
+#define CRITICAL_SECTION_START cli(); {
+#define CRITICAL_SECTION_END } sei();
+
 #define CANBUS__DETECT_SPEED 255
 
 struct ST_CANBUS_RECEIVED_DATA {
 	unsigned long canID;
-	MsgData data;
+	MsgData rxData;
 };
 
 class Device {
 private:
-	void test();
-	static SimpleFIFO<ST_CANBUS_RECEIVED_DATA, 10> s_receivedCanBusData;
+	uint32_t _counterOfProcessed;
+	void processReceivedCanBusData();
+	static SimpleFIFO<ST_CANBUS_RECEIVED_DATA, 10> s_bufferOfReceivedCanBusData;
 
 	//volatile static bool s_newModifiedIsSet;
 	//static INT8U sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf);
