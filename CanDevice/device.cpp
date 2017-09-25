@@ -306,6 +306,7 @@ void Device::doReset(uint16_t upperBoundOfRandomTime) {
 void Device::interruptFromCanBus() {
 	byte len;
 	ST_CANBUS_RECEIVED_DATA stData;
+	//volatile const ST_CANBUS_RECEIVED_DATA stData1;
 	CanID canID;
 	while (s_can.readMsgBuf(&stData.canID, &len, stData.rxData) == CAN_OK) {
 		canID._canID = stData.canID;

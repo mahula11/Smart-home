@@ -14,19 +14,36 @@
 #include "eepromConf.h"
 #include <SimpleFIFO.h>
 
-#define LOG_DEBUG(str) \
-		Serial << str;
-
 #define CAN0_INT 2   // Set INT to pin 2
 
 #define CRITICAL_SECTION_START cli(); {
 #define CRITICAL_SECTION_END } sei();
 
+//* speed must be detected
 #define CANBUS__DETECT_SPEED 255
 
 struct ST_CANBUS_RECEIVED_DATA {
 	unsigned long canID;
 	MsgData rxData;
+
+	ST_CANBUS_RECEIVED_DATA() {
+		canID = 0;
+		opravit
+		//rxData = s.rxData;
+	}
+
+	ST_CANBUS_RECEIVED_DATA(volatile const ST_CANBUS_RECEIVED_DATA & s) {
+		canID = s.canID;
+		opravit
+		//rxData = s.rxData;
+	}
+
+	ST_CANBUS_RECEIVED_DATA & operator= (const ST_CANBUS_RECEIVED_DATA & s) {
+		canID = s.canID;
+		opravit
+		//rxData = s.rxData;
+		return *this;
+	}
 };
 
 class Device {
