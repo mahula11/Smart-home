@@ -23,27 +23,41 @@
 #define CANBUS__DETECT_SPEED 255
 
 struct ST_CANBUS_RECEIVED_DATA {
-	unsigned long canID;
+	unsigned long _canID;
 	MsgData rxData;
 
 	ST_CANBUS_RECEIVED_DATA() {
-		canID = 0;
-		opravit
-		//rxData = s.rxData;
+		_canID = 0;
+		memset(rxData, 0, sizeof(uint8_t) * 8);
 	}
 
-	ST_CANBUS_RECEIVED_DATA(volatile const ST_CANBUS_RECEIVED_DATA & s) {
-		canID = s.canID;
-		opravit
-		//rxData = s.rxData;
+	ST_CANBUS_RECEIVED_DATA(uint32_t canID, MsgData &data) {
+		_canID = canID;
+		memcpy(rxData, data, sizeof(uint8_t) * 8);
+	}
+
+	ST_CANBUS_RECEIVED_DATA(const ST_CANBUS_RECEIVED_DATA & s) {
+		_canID = s._canID;
+		memcpy(rxData, s.rxData, sizeof(uint8_t) * 8);
+	}
+
+	ST_CANBUS_RECEIVED_DATA(const volatile ST_CANBUS_RECEIVED_DATA & s) {
+		_canID = s._canID;
+		memcpy(rxData, (const void *)s.rxData, sizeof(uint8_t) * 8);
 	}
 
 	ST_CANBUS_RECEIVED_DATA & operator= (const ST_CANBUS_RECEIVED_DATA & s) {
-		canID = s.canID;
-		opravit
-		//rxData = s.rxData;
+		_canID = s._canID;
+		memcpy(rxData, s.rxData, sizeof(uint8_t) * 8);
 		return *this;
 	}
+
+	//ST_CANBUS_RECEIVED_DATA & operator= (volatile const ST_CANBUS_RECEIVED_DATA & s) {
+	//	canID = s.canID;
+	//	//opravit
+	//	//rxData = s.rxData;
+	//	return *this;
+	//}
 };
 
 class Device {

@@ -308,34 +308,38 @@ void Device::interruptFromCanBus() {
 	ST_CANBUS_RECEIVED_DATA stData;
 	//volatile const ST_CANBUS_RECEIVED_DATA stData1;
 	CanID canID;
-	while (s_can.readMsgBuf(&stData.canID, &len, stData.rxData) == CAN_OK) {
-		canID._canID = stData.canID;
-		if (canID.getMacID() == s_conf.getMacAddress() || canID.getMacID() == CANBUS__MESSAGE_TO_ALL) {
+	while (s_can.readMsgBuf(&stData._canID, &len, stData.rxData) == CAN_OK) {
+		canID._canID = stData._canID;
+		DEBUG(endl << F("pred push") << endl << VAR(canID.getMacID()) << VAR(s_conf.getMacAddress()));
+		//if (canID.getMacID() == s_conf.getMacAddress() || canID.getMacID() == CANBUS__MESSAGE_TO_ALL) {
 			//* push to the queue only messages for relevant MacID or messages to all
-			s_bufferOfReceivedCanBusData.push(stData);
-		}		
+			s_bufferOfReceivedCanBusData.push((ST_CANBUS_RECEIVED_DATA)stData);
+			DEBUG(endl << F("pushed as ") << s_bufferOfReceivedCanBusData.count() << endl);
+		//}		
 	}
 }
 
+//* called from update (loop)
 void Device::processReceivedCanBusData() {
 	int8_t count;
 	CanID canID;
 	ST_CANBUS_RECEIVED_DATA stData;
-
-	DEBUG(F("-----------------------") << endl
-		<< F("ProcessReceivedData_Start:") << ++_counterOfProcessed
-		<< F(",MacID:") << s_conf.getMacAddress()
-		<< F(",milis:") << millis());
 
 	CRITICAL_SECTION_START
 		count = s_bufferOfReceivedCanBusData.count();
 	CRITICAL_SECTION_END;
 	
 	while (count) {
+		DEBUG(F("-----------------------") << endl
+			<< F("ProcessReceivedData_Start:") << ++_counterOfProcessed
+			<< F(",MacID:") << s_conf.getMacAddress()
+			<< F(",milis:") << millis() 
+			<< F(",fifo count:") << s_bufferOfReceivedCanBusData.count());
+
 		CRITICAL_SECTION_START
 			stData = s_bufferOfReceivedCanBusData.pop();
 		CRITICAL_SECTION_END;
-		canID._canID = stData.canID;
+		canID._canID = stData._canID;
 
 		DEBUG(F("Received:\n CanID:") << canID._canID << F(",MacID:") << canID.getMacID()
 			<< F(",\n fromConf:") << canID.hasFlag_fromConfiguration()
@@ -357,6 +361,15 @@ void Device::processReceivedCanBusData() {
 			//* messages from configuration server
 			if (s_arrivedConf == nullptr) {
 				s_arrivedConf = new ArrivedConfiguration();
+			}
+
+			if (canID.hasFlag_fromConfSetNewConfiguration()) {
+				DEBUG(F("New configuration is available, going to restart and get new conf."));
+				//* set to zero conter of configurations
+				//* this enforce new conf
+				EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
+				//* do reset
+				doReset();
 			}
 
 			//* sprava moze prist z FE, bez vyziadania
@@ -431,12 +444,11 @@ void Device::processReceivedCanBusData() {
 		CRITICAL_SECTION_START
 			count = s_bufferOfReceivedCanBusData.count();
 		CRITICAL_SECTION_END;
+
+		DEBUG(F("ProcessReceivedData_End:") << _counterOfProcessed
+			<< F(",milis:") << millis()
+			<< endl << F("-----------------------"));
 	}
-	DEBUG(F("ProcessReceivedData_End:") << _counterOfProcessed
-		<< F(",milis:") << millis()
-		<< endl << F("-----------------------"));
-
-
 
 	////ST_CANBUS_RECEIVED_DATA stData;
 	////s_bufferOfReceivedCanBusData.push(stData);
@@ -581,6 +593,12 @@ uint8_t Device::sendMsg(CDataBase & cdb) {
 		<< F(",MacID:") << cdb._destCanID.getMacID()
 		<< F(",\n deviceType:") << cdb.getType());
 	ret = s_can.sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
+
+	ST_CANBUS_RECEIVED_DATA stData(cdb._destCanID._canID, data);
+	CRITICAL_SECTION_START
+		s_bufferOfReceivedCanBusData.push((ST_CANBUS_RECEIVED_DATA)stData);
+	CRITICAL_SECTION_END
+
 	if (ret == CAN_OK) {
 		DEBUG(F("Msg was sent to CanBus:") << ++counter);
 		return CAN_OK;
@@ -604,8 +622,8 @@ uint8_t Device::sendMsg(CDataBase & cdb) {
 //			<< F(",MacID:") << cdb._destCanID.getMacID()
 //			<< F(",\n deviceType:") << cdb.getType());
 //		//DEBUG(F("---------------------send1"));
-//		//ret = s_can.sendMsgBuf(cdb._destCanID._canID, cdb.getSize(), data);
-//		ret = sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
+//		ret = s_can.sendMsgBuf(cdb._destCanID._canID, cdb.getSize(), data);
+//		//ret = sendMsgBuf(cdb._destCanID._canID, 1, cdb.getSize(), data);
 //		//DEBUG(F("---------------------send2"));
 //#ifdef DEBUG_BUILD
 //		if (ret == CAN_OK) {

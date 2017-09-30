@@ -69,6 +69,7 @@ MSG_DATA gListOfConfs[] = {
 	MSG_DATA(new CConfMsg_switch(2, 5)),
 	MSG_DATA(new CConfMsg_switch(2, 6)),
 	MSG_DATA(new CConfMsg_light(2, 7, 1, A4)),
+	MSG_DATA(new CConfMsg_light(2, 8, 2, 6)),
 	MSG_DATA(nullptr)
 };
 
@@ -254,6 +255,16 @@ void loop() {
 			case 'n': {
 				CConfMsg_setCanBusSpeed canBusSpeed(CANBUS__MESSAGE_TO_ALL, CAN_1000KBPS);
 				sendMsg(canBusSpeed);
+				break;
+			}
+			case 'l': {
+				CConfMsg_newConfiguration newConfiguration((MacID)0);
+				sendMsg(newConfiguration);
+				break;
+			}
+			case 'k': {
+				CConfMsg_newConfiguration newConfiguration(2);
+				sendMsg(newConfiguration);
 				break;
 			}
 		}
