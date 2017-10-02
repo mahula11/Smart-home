@@ -31,9 +31,11 @@ void Device::setPins() {
 				pinMode(((CConfMsg_light*)s_conf.getConf(i))->_gpio, OUTPUT);
 				CTrafficMsg_askSwitchForData asfd(((CConfMsg_light*)s_conf.getConf(i))->_switchMacID, ((CConfMsg_light*)s_conf.getConf(i))->_switchGPIO);
 				//sendRequest_askSwitchForValue(((CConfMsg_light*)s_conf.getConf(i))->_switchMacID, ((CConfMsg_light*)s_conf.getConf(i))->_switchGPIO);
-				sendMsg(asfd);
-			}
+				if (sendMsg(asfd) != CAN_OK) {
+
+				}
 				break;
+			}
 			//case DEVICE_TYPE_SOCKET:
 			//	//pinMode(CanExt::getLightGPIO(pData), OUTPUT);
 			//	break;
@@ -167,16 +169,6 @@ void Device::iniCanBus(uint8_t canBusSpeed) {
 void Device::init() {
 	s_arrivedConf = nullptr;
 
-	
-
-	//aa a1;
-	//a1.canid = 22; 
-	//int a;
-	//a = 1;
-
-	//SimpleFIFO<aa, 10> sFIFO;
-	//sFIFO.push(a1);
-
 	s_conf.setConfigurationStatic(eepromConf.getCountOfConf(),
 		eepromConf.getWatchdogTimeout(),
 		eepromConf.getAutoResetTime(),
@@ -196,11 +188,6 @@ void Device::init() {
 		//* nacitaj conf
 		DEBUG(F("Set conf from eeprom.") << s_conf.getMacAddress());
 		s_conf.setConfiguration(eepromConf.readConf());
-		
-		//CTrafficMsg_ImUp imUpMsg(s_conf.getMacAddress());
-		//sendMsg(imUpMsg);
-
-
 		setPins();
 	} else {
 		//* pocet je 0, takze ziadnu konfiguraciu v eeprom nemame, treba poziadat o novu.
@@ -220,24 +207,14 @@ void Device::update() {
 		//* resetuje watchdog, zabrani restartu
 		wdt_reset();
 	}
-		//* test watchdog timeouts, set millis in delay higher then watchdog timer, processor will be reseting around
-		//DEBUG("po wdt_resete");
-		//delay(2500);
 	//* s_arrivedConf is read in interruptFromCanBus
 	//* if arrived configuration is complet, then copy it to eeprom
 	if (s_arrivedConf && s_arrivedConf->isComplet()) {		
 		DEBUG(F("New conf will be processed"));
 		//* zapiseme do eeprom
 		eepromConf.writeConf(s_arrivedConf->getCount(), s_arrivedConf->getConf());
-		//DEBUG(F("Processor reset"));
 		//* do reset and do not have to clean and set up configuration
 		doReset();
-		////* zapiseme do Configuration
-		//s_conf.setConfiguration(eepromConf.readConf());
-		//setPins();
-		////* zmazeme _arriveConf
-		//delete s_arrivedConf;
-		//s_arrivedConf = nullptr;
 	}
 
 	processReceivedCanBusData();
@@ -296,26 +273,17 @@ void Device::doReset(uint16_t upperBoundOfRandomTime) {
 	Serial.flush();
 	wdt_enable(WDTO_15MS);
 	delay(100000000);
-	//delayMicroseconds(10000);
 }
-
-#ifdef DEBUG_BUILD
-	//unsigned long gCounter = 0;
-#endif
 
 void Device::interruptFromCanBus() {
 	byte len;
 	ST_CANBUS_RECEIVED_DATA stData;
-	//volatile const ST_CANBUS_RECEIVED_DATA stData1;
 	CanID canID;
 	while (s_can.readMsgBuf(&stData._canID, &len, stData.rxData) == CAN_OK) {
 		canID._canID = stData._canID;
-		DEBUG(endl << F("pred push") << endl << VAR(canID.getMacID()) << VAR(s_conf.getMacAddress()));
-		//if (canID.getMacID() == s_conf.getMacAddress() || canID.getMacID() == CANBUS__MESSAGE_TO_ALL) {
-			//* push to the queue only messages for relevant MacID or messages to all
-			s_bufferOfReceivedCanBusData.push((ST_CANBUS_RECEIVED_DATA)stData);
-			DEBUG(endl << F("pushed as ") << s_bufferOfReceivedCanBusData.count() << endl);
-		//}		
+		//DEBUG(endl << F("Arrived MacID:") << canID.getMacID());
+		s_bufferOfReceivedCanBusData.push((ST_CANBUS_RECEIVED_DATA)stData);
+		DEBUG(endl << F("Number of pushed:") << s_bufferOfReceivedCanBusData.count() << endl);
 	}
 }
 
@@ -339,8 +307,8 @@ void Device::processReceivedCanBusData() {
 		CRITICAL_SECTION_START
 			stData = s_bufferOfReceivedCanBusData.pop();
 		CRITICAL_SECTION_END;
-		canID._canID = stData._canID;
 
+		canID._canID = stData._canID;
 		DEBUG(F("Received:\n CanID:") << canID._canID << F(",MacID:") << canID.getMacID()
 			<< F(",\n fromConf:") << canID.hasFlag_fromConfiguration()
 			<< F(",\n fromSwitch:") << canID.hasFlag_fromSwitch()
