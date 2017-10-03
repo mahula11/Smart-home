@@ -1,4 +1,4 @@
-
+﻿
 #include <Arduino.h>
 
 #include "device.h"
@@ -7,7 +7,8 @@ Device * Device::s_instance = nullptr;
 //ArrivedConfiguration Device::s_arrivedConf;
 MCP_CAN Device::s_can(10);
 Configuration Device::s_conf;
-SimpleFIFO<ST_CANBUS_RECEIVED_DATA, 10> Device::s_bufferOfReceivedCanBusData;
+SimpleFIFO<ST_CANBUS_RECEIVED_DATA, CAN_BUS__BUFFER_SIZE> Device::s_bufferOfReceivedCanBusData;
+volatile bool Device::s_isDisableInterrupts = false;
 ArrivedConfiguration * Device::s_arrivedConf = nullptr;
 //volatile bool Device::s_newModifiedIsSet = false;
 //uint16_t Device::s_deviceAddress = 0;
@@ -278,12 +279,24 @@ void Device::doReset(uint16_t upperBoundOfRandomTime) {
 void Device::interruptFromCanBus() {
 	byte len;
 	ST_CANBUS_RECEIVED_DATA stData;
-	CanID canID;
+	//CanID canID;
+	int8_t count;
+	//* read messages from can bus
 	while (s_can.readMsgBuf(&stData._canID, &len, stData.rxData) == CAN_OK) {
-		canID._canID = stData._canID;
+		//canID._canID = stData._canID;
 		//DEBUG(endl << F("Arrived MacID:") << canID.getMacID());
+		
+		count = s_bufferOfReceivedCanBusData.count();
+		DEBUG(endl << F("Pushed:") << count << endl);
+		if (count >= CAN_BUS__BUFFER_SIZE) {
+			DEBUG(F("Buffer size achieved"));
+			//* disable interrupts when fifo buffer is full
+			DISABLE_INTERRUPTS
+			//* go out from reading canBus messages (come back, when fifo buffer will be available)
+			break;
+		}
+		//* push to fifo buffer
 		s_bufferOfReceivedCanBusData.push((ST_CANBUS_RECEIVED_DATA)stData);
-		DEBUG(endl << F("Number of pushed:") << s_bufferOfReceivedCanBusData.count() << endl);
 	}
 }
 
@@ -292,13 +305,19 @@ void Device::processReceivedCanBusData() {
 	int8_t count;
 	CanID canID;
 	ST_CANBUS_RECEIVED_DATA stData;
+	bool isDisableInterrupts;
 
 	CRITICAL_SECTION_START
 		count = s_bufferOfReceivedCanBusData.count();
-	CRITICAL_SECTION_END;
+		isDisableInterrupts = s_isDisableInterrupts;
+	CRITICAL_SECTION_END
+
+	if (isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
+		ENABLE_INTERRUPTS
+	}
 	
 	while (count) {
-		DEBUG(F("-----------------------") << endl
+		DEBUG(F("┌-----------------------┐") << endl
 			<< F("ProcessReceivedData_Start:") << ++_counterOfProcessed
 			<< F(",MacID:") << s_conf.getMacAddress()
 			<< F(",milis:") << millis() 
@@ -306,7 +325,12 @@ void Device::processReceivedCanBusData() {
 
 		CRITICAL_SECTION_START
 			stData = s_bufferOfReceivedCanBusData.pop();
-		CRITICAL_SECTION_END;
+			isDisableInterrupts = s_isDisableInterrupts;
+		CRITICAL_SECTION_END
+
+		if (isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
+			ENABLE_INTERRUPTS
+		}
 
 		canID._canID = stData._canID;
 		DEBUG(F("Received:\n CanID:") << canID._canID << F(",MacID:") << canID.getMacID()
@@ -415,134 +439,9 @@ void Device::processReceivedCanBusData() {
 
 		DEBUG(F("ProcessReceivedData_End:") << _counterOfProcessed
 			<< F(",milis:") << millis()
-			<< endl << F("-----------------------"));
+			<< endl << F("└-----------------------┘"));
 	}
-
-	////ST_CANBUS_RECEIVED_DATA stData;
-	////s_bufferOfReceivedCanBusData.push(stData);
-	////* ----------------------------
-
-	////s_can.setMode(MCP_NORMAL);
-	////Device * instance = getInstance();
-	//#ifdef DEBUG_BUILD
-	//	unsigned long counter = gCounter++;
-	//#endif
-	//DEBUG(F("-----------------------") << endl 
-	//	<< F("IntFromCanBusStart:") << counter 
-	//	<< F(",MacID:") << s_conf.getMacAddress() 
-	//	<< F(",milis:") << millis());
-	//CanID canId;
-	//byte len = 0;
-	//MsgData rxBuf;
-	//uint8_t readMsgStat;
-	//while ((readMsgStat = s_can.readMsgBuf(&canId._canID, &len, rxBuf)) == CAN_OK) {
-	//	DEBUG(F("Received:\n CanID:") << canId._canID << F(",MacID:") << canId.getMacID()
-	//		<< F(",\n fromConf:") << canId.hasFlag_fromConfiguration()
-	//		<< F(",\n fromSwitch:") << canId.hasFlag_fromSwitch()
-	//		<< F(",\n askSwitchForVal:") << canId.hasFlag_askSwitchForValue()
-	//		<< F(",\n ping:") << canId.hasFlag_ping() 
-	//		<< F(",\n ImUp:") << canId.hasFlag_ImUp());
-
-	//	if (canId.hasFlag_fromConfiguration() && canId.getMacID() == CANBUS__MESSAGE_TO_ALL) {
-	//		//* set new CAN BUS speed
-	//		if (canId.hasFlag_fromConfSetCanBusSpeed()) {
-	//			DEBUG(F("Set CAN BUS speed to:") << rxBuf[0]);
-	//			EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, (uint8_t)rxBuf[0]);
-	//			doReset(1000);
-	//		}
-	//	}
-
-	//	if (canId.hasFlag_fromConfiguration() && canId.getMacID() == s_conf.getMacAddress()) {
-	//		//* messages from configuration server
-	//		if (s_arrivedConf == nullptr) {
-	//			s_arrivedConf = new ArrivedConfiguration();
-	//		}
-	//		
-	//		//* sprava moze prist z FE, bez vyziadania
-	//		//* nastavime timeout pre watchdog
-	//		if (canId.hasFlag_fromConfSetWatchdog()) {
-	//			DEBUG(F("Set watchdog message, val:") << rxBuf[0]);
-	//			eepromConf.setWatchdogTimeout((WATCHDOG_TIMEOUT)rxBuf[0]);
-	//			continue;
-	//		}
-
-	//		//* received reset from conf
-	//		//* disable wdt_reset
-	//		if (canId.hasFlag_fromConfReset()) {
-	//			DEBUG(F("Reset message!"));
-	//			doReset();
-	//		}
-
-	//		if (canId.hasFlag_fromConfAutoResetTime()) {
-	//			DEBUG(F("AutoReset message, val:") << rxBuf[0]);
-	//			eepromConf.setAutoResetTime(rxBuf[0]);
-	//			s_conf.setAutoResetTime(rxBuf[0]);
-	//			continue;
-	//		}
-
-	//		//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
-	//		//* getCount vrati nulu, pretoze este neviemme pocet sprav
-	//		if (s_arrivedConf->getCount()) {
-	//			byte type = canId.getConfigPart();
-	//			DEBUG(F("Conf arrived for type:") << type);
-	//			CDataBase * pConfData;
-	//			switch (type) {
-	//				case DEVICE_TYPE_SWITCH:
-	//					pConfData = new CConfMsg_switch(rxBuf);
-	//					break;
-	//				case DEVICE_TYPE_LIGHT:
-	//					pConfData = new CConfMsg_light(rxBuf);
-	//					break;
-	//			}
-	//			s_arrivedConf->addConf(pConfData);
-	//		} else {
-	//			//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
-	//			DEBUG(F("Number of confs will arrive:") << rxBuf[0]);
-	//			s_arrivedConf->setCount(rxBuf[0]);
-	//		}
-	//	} else if (canId.hasFlag_fromSwitch()) { //* message from switch to lights
-	//		DEBUG(F("Messsage from switch arrived"));
-	//		//* teraz skontrolovat ci ID vypinaca patri niektoremu vypinacu v nasej konfiguracii (pre niektoru ziarovku)
-	//		CTrafficMsg_fromSwitch switchData(rxBuf);
-	//		for (byte i = 0; i < s_conf.getCount(); i++) {
-	//			//* vyhladavame len typ "ziarovky" a potom ich IDcka vypinacov
-	//			//* 0 - typ (ziarovka), 1 - gpio, 2 - id vypinaca
-	//			CDataBase * pData = s_conf.getConf(i);
-	//			if (pData->getType() == DEVICE_TYPE_LIGHT && 
-	//				((CConfMsg_light*)pData)->_switchMacID == canId.getMacID() && 
-	//				((CConfMsg_light*)pData)->_switchGPIO == switchData._gpio) 
-	//			{
-	//				//s_newModifiedIsSet = true;
-	//				s_conf.setConfValue(i, switchData._value, true);
-	//				DEBUG(F("Nastavit hodnotu:") << switchData._value << F(" pre switch z MacID:") << canId.getMacID() 
-	//					<< F(" a gpio:") << switchData._gpio);
-	//			}
-	//		}
-	//	} else if (canId.hasFlag_askSwitchForValue() && canId.getMacID() == s_conf.getMacAddress()) {
-	//		DEBUG(F("Message from light, asking switch for value"));
-
-	//		byte gpio = rxBuf[0];
-	//		byte pinValue = digitalRead(gpio);
-	//		//sendRequest_fromSwitch(gpio, pinValue);
-	//		CTrafficMsg_fromSwitch msgFromSwitch(s_conf.getMacAddress(), gpio, pinValue);
-	//		sendMsg(msgFromSwitch);
-
-	//	}
-	//}
-	//DEBUG(F("IntFromCanBusEnd:") << counter 
-	//	<< F(",milis:") << millis() 
-	//	<< F(",") << VAR(readMsgStat) << endl 
-	//	<< F("-----------------------"));
 }
-
-//INT8U Device::sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf) {
-//	INT8U res;
-//
-//	s_can.setMsg(id, 0, ext, len, buf);
-//	res = s_can.sendMsg();
-//
-//	return res;
-//}
 
 uint8_t Device::sendMsg(CDataBase & cdb) {
 	byte data[8];

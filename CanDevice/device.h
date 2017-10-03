@@ -16,8 +16,26 @@
 
 #define CAN0_INT 2   // Set INT to pin 2
 
-#define CRITICAL_SECTION_START cli(); {
-#define CRITICAL_SECTION_END } sei();
+#define CRITICAL_SECTION_START	\
+	cli();						\
+	{
+
+#define CRITICAL_SECTION_END				\
+	}										\
+	if (s_isDisableInterrupts == false) {	\
+		sei();								\
+	}
+	
+#define DISABLE_INTERRUPTS			\
+	cli();							\
+	s_isDisableInterrupts = true; 
+
+#define ENABLE_INTERRUPTS			\
+	s_isDisableInterrupts = false;	\
+	sei();
+
+
+#define CAN_BUS__BUFFER_SIZE 10
 
 //* speed must be detected
 #define CANBUS__DETECT_SPEED 255
@@ -64,7 +82,8 @@ class Device {
 private:
 	uint32_t _counterOfProcessed;
 	void processReceivedCanBusData();
-	static SimpleFIFO<ST_CANBUS_RECEIVED_DATA, 10> s_bufferOfReceivedCanBusData;
+	static SimpleFIFO<ST_CANBUS_RECEIVED_DATA, CAN_BUS__BUFFER_SIZE> s_bufferOfReceivedCanBusData;
+	volatile static bool s_isDisableInterrupts;
 
 	//volatile static bool s_newModifiedIsSet;
 	//static INT8U sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf);
