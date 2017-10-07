@@ -99,6 +99,7 @@ private:
 	//static byte s_numberOfArrivedMsg;
 
 	static void interruptFromCanBus();
+	static void readCanBusData();
 	static uint8_t sendMsg(CDataBase & cdb);
 	//void sendRequest_forConfiguration();
 	//void sendRequest_askSwitchForValue(MacID macId, uint8_t pin);

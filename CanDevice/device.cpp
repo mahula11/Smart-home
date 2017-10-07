@@ -277,26 +277,37 @@ void Device::doReset(uint16_t upperBoundOfRandomTime) {
 }
 
 void Device::interruptFromCanBus() {
+	DEBUG(endl << F("┌------interrupt--------┐"));
+	readCanBusData();
+	DEBUG(F("└------interrupt--------┘"));
+}
+
+void Device::readCanBusData() {
 	byte len;
 	ST_CANBUS_RECEIVED_DATA stData;
 	//CanID canID;
-	int8_t count;
+	int8_t count = s_bufferOfReceivedCanBusData.count();
+	DEBUG(F("Count of FIFO:") << count);
+	if (count == CAN_BUS__BUFFER_SIZE) {
+		DEBUG(F("Buffer size is over, Interrupt will be disabled"));
+		//* disable interrupts when fifo buffer is full
+		DISABLE_INTERRUPTS
+			//* go out from reading canBus messages (come back, when fifo buffer will be available)
+			return;
+	}
 	//* read messages from can bus
 	while (s_can.readMsgBuf(&stData._canID, &len, stData.rxData) == CAN_OK) {
-		//canID._canID = stData._canID;
-		//DEBUG(endl << F("Arrived MacID:") << canID.getMacID());
-		
-		count = s_bufferOfReceivedCanBusData.count();
-		DEBUG(endl << F("Pushed:") << count << endl);
-		if (count >= CAN_BUS__BUFFER_SIZE) {
-			DEBUG(F("Buffer size achieved"));
-			//* disable interrupts when fifo buffer is full
-			DISABLE_INTERRUPTS
-			//* go out from reading canBus messages (come back, when fifo buffer will be available)
-			break;
-		}
 		//* push to fifo buffer
 		s_bufferOfReceivedCanBusData.push((ST_CANBUS_RECEIVED_DATA)stData);
+		count = s_bufferOfReceivedCanBusData.count();
+		DEBUG(F("Pushed:") << count);
+		if (count == CAN_BUS__BUFFER_SIZE) {
+			DEBUG(F("Buffer size is over, Interrupt will be disabled"));
+			//* disable interrupts when fifo buffer is full
+			DISABLE_INTERRUPTS
+				//* go out from reading canBus messages (come back, when fifo buffer will be available)
+				return;
+		}
 	}
 }
 
@@ -310,27 +321,32 @@ void Device::processReceivedCanBusData() {
 	CRITICAL_SECTION_START
 		count = s_bufferOfReceivedCanBusData.count();
 		isDisableInterrupts = s_isDisableInterrupts;
+		if (isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
+			isDisableInterrupts = s_isDisableInterrupts = false;
+			DEBUG(endl << F("┌------process1---------┐"));
+			readCanBusData();
+			DEBUG(F("└------process1---------┘"));
+		}
 	CRITICAL_SECTION_END
-
-	if (isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
-		ENABLE_INTERRUPTS
-	}
 	
 	while (count) {
-		DEBUG(F("┌-----------------------┐") << endl
-			<< F("ProcessReceivedData_Start:") << ++_counterOfProcessed
+		DEBUG(F("┌----ProcessReceivedData----┐") << endl
+			<< F("counter:") << ++_counterOfProcessed
 			<< F(",MacID:") << s_conf.getMacAddress()
 			<< F(",milis:") << millis() 
-			<< F(",fifo count:") << s_bufferOfReceivedCanBusData.count());
+			<< F(",fifo count:") << count);
 
 		CRITICAL_SECTION_START
 			stData = s_bufferOfReceivedCanBusData.pop();
+			count = s_bufferOfReceivedCanBusData.count();
 			isDisableInterrupts = s_isDisableInterrupts;
+			if (isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
+				isDisableInterrupts = s_isDisableInterrupts = false;
+				DEBUG(endl << F("┌------process2---------┐"));						 
+				readCanBusData();
+				DEBUG(F("└------process2---------┘"));
+			}
 		CRITICAL_SECTION_END
-
-		if (isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
-			ENABLE_INTERRUPTS
-		}
 
 		canID._canID = stData._canID;
 		DEBUG(F("Received:\n CanID:") << canID._canID << F(",MacID:") << canID.getMacID()
@@ -437,9 +453,9 @@ void Device::processReceivedCanBusData() {
 			count = s_bufferOfReceivedCanBusData.count();
 		CRITICAL_SECTION_END;
 
-		DEBUG(F("ProcessReceivedData_End:") << _counterOfProcessed
+		DEBUG(F("counter:") << _counterOfProcessed
 			<< F(",milis:") << millis()
-			<< endl << F("└-----------------------┘"));
+			<< endl << F("└----ProcessReceivedData----┘"));
 	}
 }
 
@@ -455,7 +471,8 @@ uint8_t Device::sendMsg(CDataBase & cdb) {
 	//	DEBUG(F("1.Set mode MCP_NORMAL succesful"));
 	//} else {
 	//	DEBUG(F("1.Set mode MCP_NORMAL fail"));
-	//}
+	//}		 └------interrupt--------┘
+	DEBUG(F("┌------sendMsg----------┐"));
 	DEBUG(F("Sending msg to CanBus:\n CanID:") << cdb._destCanID._canID
 		<< F(",MacID:") << cdb._destCanID.getMacID()
 		<< F(",\n deviceType:") << cdb.getType());
@@ -468,9 +485,11 @@ uint8_t Device::sendMsg(CDataBase & cdb) {
 
 	if (ret == CAN_OK) {
 		DEBUG(F("Msg was sent to CanBus:") << ++counter);
+		DEBUG(F("└-------sendMsg---------┘"));
 		return CAN_OK;
 	} else {
 		DEBUG(F("Failure when send to CanBus:\n CanID:") << cdb._destCanID._canID << F(",error:") << ret);
+		DEBUG(F("└-------sendMsg---------┘"));
 		return CAN_FAIL;
 	}
 
