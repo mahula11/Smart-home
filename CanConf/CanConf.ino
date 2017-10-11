@@ -225,6 +225,7 @@ void loop() {
 				sendMsg(wd);
 				break;
 			}
+
 			case 'p': {
 				//* nastavi auto reset
 				CConfMsg_autoReset ar(1, ar10s);

@@ -316,17 +316,10 @@ void Device::processReceivedCanBusData() {
 	int8_t count;
 	CanID canID;
 	ST_CANBUS_RECEIVED_DATA stData;
-	bool isDisableInterrupts;
 
 	CRITICAL_SECTION_START
+		//* get count of items in fifo
 		count = s_bufferOfReceivedCanBusData.count();
-		isDisableInterrupts = s_isDisableInterrupts;
-		if (isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
-			isDisableInterrupts = s_isDisableInterrupts = false;
-			DEBUG(endl << F("┌------process1---------┐"));
-			readCanBusData();
-			DEBUG(F("└------process1---------┘"));
-		}
 	CRITICAL_SECTION_END
 	
 	while (count) {
@@ -337,11 +330,13 @@ void Device::processReceivedCanBusData() {
 			<< F(",fifo count:") << count);
 
 		CRITICAL_SECTION_START
+			//* pop data
 			stData = s_bufferOfReceivedCanBusData.pop();
+			//* get new count (after pop)
 			count = s_bufferOfReceivedCanBusData.count();
-			isDisableInterrupts = s_isDisableInterrupts;
-			if (isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
-				isDisableInterrupts = s_isDisableInterrupts = false;
+			//* read new data from canBus, while space is in fifo
+			if (s_isDisableInterrupts && count < CAN_BUS__BUFFER_SIZE) {
+				s_isDisableInterrupts = false;
 				DEBUG(endl << F("┌------process2---------┐"));						 
 				readCanBusData();
 				DEBUG(F("└------process2---------┘"));
@@ -356,14 +351,19 @@ void Device::processReceivedCanBusData() {
 			<< F(",\n ping:") << canID.hasFlag_ping()
 			<< F(",\n ImUp:") << canID.hasFlag_ImUp());
 
-		if (canID.hasFlag_fromConfiguration() && canID.getMacID() == CANBUS__MESSAGE_TO_ALL) {
-			//* set new CAN BUS speed
-			if (canID.hasFlag_fromConfSetCanBusSpeed()) {
-				DEBUG(F("Set CAN BUS speed to:") << stData.rxData[0]);
-				EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, (uint8_t)stData.rxData[0]);
-				doReset(1000);
-			}
+		if (CConfMsg_setCanBusSpeed::getType() == canID.getType()) {
+			DEBUG(F("Set CAN BUS speed to:") << stData.rxData[0]);
+			EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, (uint8_t)stData.rxData[0]);
+			doReset(1000);
 		}
+		//if (canID.hasFlag_fromConfiguration() && canID.getMacID() == CANBUS__MESSAGE_TO_ALL) {
+		//	//* set new CAN BUS speed
+		//	if (canID.hasFlag_fromConfSetCanBusSpeed()) {
+		//		DEBUG(F("Set CAN BUS speed to:") << stData.rxData[0]);
+		//		EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, (uint8_t)stData.rxData[0]);
+		//		doReset(1000);
+		//	}
+		//}
 
 		if (canID.hasFlag_fromConfiguration() && canID.getMacID() == s_conf.getMacAddress()) {
 			//* messages from configuration server
@@ -371,7 +371,7 @@ void Device::processReceivedCanBusData() {
 				s_arrivedConf = new ArrivedConfiguration();
 			}
 
-			if (canID.hasFlag_fromConfSetNewConfiguration()) {
+			if (CConfMsg_newConfiguration::getType() == canID.getType()) {
 				DEBUG(F("New configuration is available, going to restart and get new conf."));
 				//* set to zero conter of configurations
 				//* this enforce new conf
@@ -379,6 +379,14 @@ void Device::processReceivedCanBusData() {
 				//* do reset
 				doReset();
 			}
+			//if (canID.hasFlag_fromConfSetNewConfiguration()) {
+			//	DEBUG(F("New configuration is available, going to restart and get new conf."));
+			//	//* set to zero conter of configurations
+			//	//* this enforce new conf
+			//	EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
+			//	//* do reset
+			//	doReset();
+			//}
 
 			//* sprava moze prist z FE, bez vyziadania
 			//* nastavime timeout pre watchdog
@@ -405,7 +413,7 @@ void Device::processReceivedCanBusData() {
 			//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
 			//* getCount vrati nulu, pretoze este neviemme pocet sprav
 			if (s_arrivedConf->getCount()) {
-				byte type = canID.getConfigPart();
+				byte type = canID.getType();
 				DEBUG(F("Conf arrived for type:") << type);
 				CDataBase * pConfData;
 				switch (type) {
