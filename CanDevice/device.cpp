@@ -351,7 +351,7 @@ void Device::processReceivedCanBusData() {
 			<< F(",\n ping:") << canID.hasFlag_ping()
 			<< F(",\n ImUp:") << canID.hasFlag_ImUp());
 
-		if (CConfMsg_setCanBusSpeed::getType() == canID.getType()) {
+		if (CConfMsg_setCanBusSpeed::isMatch(canID)) {
 			DEBUG(F("Set CAN BUS speed to:") << stData.rxData[0]);
 			EEPROM.writeByte(EEPROM_ADDRESS__CAN_BUS_SPEED, (uint8_t)stData.rxData[0]);
 			doReset(1000);
@@ -371,10 +371,10 @@ void Device::processReceivedCanBusData() {
 				s_arrivedConf = new ArrivedConfiguration();
 			}
 
-			if (CConfMsg_newConfiguration::getType() == canID.getType()) {
-				DEBUG(F("New configuration is available, going to restart and get new conf."));
+			if (CConfMsg_newConfiguration::isMatch(canID)) {
+				DEBUG(F("New configuration is available, going to restart and get new conf"));
 				//* set to zero conter of configurations
-				//* this enforce new conf
+				//* this enforce new configurations
 				EEPROM.writeByte(EEPROM_ADDRESS__CONF_COUNT, 0);
 				//* do reset
 				doReset();
@@ -390,7 +390,8 @@ void Device::processReceivedCanBusData() {
 
 			//* sprava moze prist z FE, bez vyziadania
 			//* nastavime timeout pre watchdog
-			if (canID.hasFlag_fromConfSetWatchdog()) {
+			//if (canID.hasFlag_fromConfSetWatchdog()) {
+			if (CConfMsg_watchdog::isMatch(canID)) {
 				DEBUG(F("Set watchdog message, val:") << stData.rxData[0]);
 				eepromConf.setWatchdogTimeout((WATCHDOG_TIMEOUT)stData.rxData[0]);
 				continue;
@@ -398,12 +399,14 @@ void Device::processReceivedCanBusData() {
 
 			//* received reset from conf
 			//* disable wdt_reset
-			if (canID.hasFlag_fromConfReset()) {
+			//if (canID.hasFlag_fromConfReset()) {
+			if (CConfMsg_reset::isMatch(canID)) {
 				DEBUG(F("Reset message!"));
 				doReset();
 			}
 
-			if (canID.hasFlag_fromConfAutoResetTime()) {
+			//if (canID.hasFlag_fromConfAutoResetTime()) {
+			if (CConfMsg_autoReset::isMatch(canID)) {
 				DEBUG(F("AutoReset message, val:") << stData.rxData[0]);
 				eepromConf.setAutoResetTime(stData.rxData[0]);
 				s_conf.setAutoResetTime(stData.rxData[0]);
@@ -413,24 +416,30 @@ void Device::processReceivedCanBusData() {
 			//* ked pride prva konfiguracna sprava, tak v datach, v prvom byte mame pocet sprav, ktore este pridu
 			//* getCount vrati nulu, pretoze este neviemme pocet sprav
 			if (s_arrivedConf->getCount()) {
-				byte type = canID.getType();
-				DEBUG(F("Conf arrived for type:") << type);
+				//byte type = canID.getType();
+				DEBUG(F("Conf arrived for type:") );
 				CDataBase * pConfData;
-				switch (type) {
-					case DEVICE_TYPE_SWITCH:
-						pConfData = new CConfMsg_switch(stData.rxData);
-						break;
-					case DEVICE_TYPE_LIGHT:
-						pConfData = new CConfMsg_light(stData.rxData);
-						break;
+				if (CConfMsg_switch::isMatch(canID)) {
+					pConfData = new CConfMsg_switch(stData.rxData);
+				} else if (CConfMsg_light::isMatch(canID)) {
+					pConfData = new CConfMsg_light(stData.rxData);
 				}
+				//switch (type) {
+				//	case DEVICE_TYPE_SWITCH:
+				//		pConfData = new CConfMsg_switch(stData.rxData);
+				//		break;
+				//	case DEVICE_TYPE_LIGHT:
+				//		pConfData = new CConfMsg_light(stData.rxData);
+				//		break;
+				//}
 				s_arrivedConf->addConf(pConfData);
 			} else {
 				//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
 				DEBUG(F("Number of confs will arrive:") << stData.rxData[0]);
 				s_arrivedConf->setCount(stData.rxData[0]);
 			}
-		} else if (canID.hasFlag_fromSwitch()) { //* message from switch to lights
+		//} else if (canID.hasFlag_fromSwitch()) { //* message from switch to lights
+		} else if (CTrafficMsg_fromSwitch::isMatch(canID)) { //* message from switch to lights
 			DEBUG(F("Messsage from switch arrived"));
 			//* teraz skontrolovat ci ID vypinaca patri niektoremu vypinacu v nasej konfiguracii (pre niektoru ziarovku)
 			CTrafficMsg_fromSwitch switchData(stData.rxData);
