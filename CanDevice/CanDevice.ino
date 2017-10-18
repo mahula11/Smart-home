@@ -75,7 +75,7 @@ void setup() {
 	DEBUG(F("Conf count:") << EEPROM.readByte(EEPROM_ADDRESS__CONF_COUNT));
 	device.init();
 
-	//watchdogSetup();
+	watchdogSetup();
 }
 
 void loop() {

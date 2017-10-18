@@ -10,6 +10,7 @@ private:
 	volatile uint8_t _numberOfAddedConf;
 	CONF * _pConf;
 	uint8_t _confCount;
+	bool _wasAdded;
 public:
 	ArrivedConfiguration();
 	~ArrivedConfiguration();

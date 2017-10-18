@@ -10,7 +10,7 @@ ArrivedConfiguration::~ArrivedConfiguration() {
 }
 
 bool ArrivedConfiguration::isComplet() {
-	return (_numberOfAddedConf == _confCount);
+	return _wasAdded && (_numberOfAddedConf == _confCount);
 }
 
 uint8_t ArrivedConfiguration::getCount() {
@@ -24,6 +24,7 @@ void ArrivedConfiguration::setCount(uint8_t count) {
 
 void ArrivedConfiguration::clean() {
 	//_count = 0;
+	_wasAdded = false;
 	_numberOfAddedConf = 0;
 	//if (_pConf) {
 	//	delete[] _pConf;
@@ -37,4 +38,5 @@ const CONF * ArrivedConfiguration::getConf() {
 
 void ArrivedConfiguration::addConf(CDataBase * pConfDataBase) {
 	_pConf->ppConfData[_numberOfAddedConf++] = pConfDataBase;
+	_wasAdded = true;
 }

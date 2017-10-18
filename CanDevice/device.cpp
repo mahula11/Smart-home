@@ -9,7 +9,7 @@ MCP_CAN Device::s_can(10);
 Configuration Device::s_conf;
 SimpleFIFO<ST_CANBUS_RECEIVED_DATA, CAN_BUS__BUFFER_SIZE> Device::s_bufferOfReceivedCanBusData;
 volatile bool Device::s_isDisableInterrupts = false;
-ArrivedConfiguration * Device::s_arrivedConf = nullptr;
+ArrivedConfiguration * Device::s_arrivedConf = new ArrivedConfiguration();
 //volatile bool Device::s_newModifiedIsSet = false;
 //uint16_t Device::s_deviceAddress = 0;
 //bool Device::s_firstConfMessage = true;
@@ -168,7 +168,7 @@ void Device::iniCanBus(uint8_t canBusSpeed) {
 }
 
 void Device::init() {
-	s_arrivedConf = nullptr;
+	//s_arrivedConf = nullptr;
 
 	s_conf.setConfigurationStatic(eepromConf.getCountOfConf(),
 		eepromConf.getWatchdogTimeout(),
@@ -210,7 +210,7 @@ void Device::update() {
 	}
 	//* s_arrivedConf is read in interruptFromCanBus
 	//* if arrived configuration is complet, then copy it to eeprom
-	if (s_arrivedConf && s_arrivedConf->isComplet()) {		
+	if (s_arrivedConf->isComplet()) {
 		DEBUG(F("New conf will be processed"));
 		//* zapiseme do eeprom
 		eepromConf.writeConf(s_arrivedConf->getCount(), s_arrivedConf->getConf());
@@ -367,9 +367,9 @@ void Device::processReceivedCanBusData() {
 
 		if (canID.hasFlag_fromConfiguration() && canID.getMacID() == s_conf.getMacAddress()) {
 			//* messages from configuration server
-			if (s_arrivedConf == nullptr) {
-				s_arrivedConf = new ArrivedConfiguration();
-			}
+			//if (s_arrivedConf == nullptr) {
+			//	s_arrivedConf = new ArrivedConfiguration();
+			//}
 
 			if (CConfMsg_newConfiguration::isMatch(canID)) {
 				DEBUG(F("New configuration is available, going to restart and get new conf"));
@@ -434,9 +434,15 @@ void Device::processReceivedCanBusData() {
 				//}
 				s_arrivedConf->addConf(pConfData);
 			} else {
+				////* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
+				//DEBUG(F("Number of confs will arrive:") << stData.rxData[0]);
+				//s_arrivedConf->setCount(stData.rxData[0]);
+			}
+			if (CConfMsg_numOfConf::isMatch(canID)) {
 				//* prisla prva sprava, prislo cislo, ktore je pocet sprav, ktore este pridu z CanConf
 				DEBUG(F("Number of confs will arrive:") << stData.rxData[0]);
 				s_arrivedConf->setCount(stData.rxData[0]);
+				continue;
 			}
 		//} else if (canID.hasFlag_fromSwitch()) { //* message from switch to lights
 		} else if (CTrafficMsg_fromSwitch::isMatch(canID)) { //* message from switch to lights
@@ -456,7 +462,8 @@ void Device::processReceivedCanBusData() {
 						<< F(" a gpio:") << switchData._gpio);
 				}
 			}
-		} else if (canID.hasFlag_askSwitchForValue() && canID.getMacID() == s_conf.getMacAddress()) {
+		//} else if (canID.hasFlag_askSwitchForValue() && canID.getMacID() == s_conf.getMacAddress()) {
+		} else if (CTrafficMsg_askSwitchForData::isMatch(canID) && canID.getMacID() == s_conf.getMacAddress()) {
 			DEBUG(F("Message from light, asking switch for value"));
 
 			byte gpio = stData.rxData[0];
